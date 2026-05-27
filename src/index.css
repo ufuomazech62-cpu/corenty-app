@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'DM Sans', sans-serif;
+  --font-serif: 'Instrument Serif', serif;
+
+  --color-cream: #f5f4f1;
+  --color-surface: #ffffff;
+  --color-ink: #0a0a0a;
+  --color-ink-secondary: #0a0a0a;
+  --color-ink-tertiary: #0a0a0a;
+  --color-border: #e7e5e4;
+  --color-border-light: #f0efec;
+
+  --color-brand: #e85d04;
+  --color-brand-light: #fff3e8;
+  --color-brand-dark: #c2410c;
+
+  --color-like: #16a34a;
+  --color-like-light: #f0fdf4;
+  --color-nope: #dc2626;
+  --color-nope-light: #fef2f2;
+  --color-match: #8b5cf6;
+  --color-match-light: #f5f3ff;
+}
+
+@layer base {
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body {
+    font-family: var(--font-body);
+    background: linear-gradient(180deg, #f5f4f1 0%, #f8f7f4 50%, #f5f4f1 100%);
+    background-attachment: fixed;
+    color: #0a0a0a;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: var(--color-brand);
+    color: white;
+  }
+}
+
+@layer components {
+  .glass {
+    background: rgba(245, 244, 241, 0.85);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+  }
+
+  .text-gradient {
+    background: linear-gradient(135deg, var(--color-brand) 0%, #f59e0b 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .noise {
+    position: relative;
+  }
+
+  .noise::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+}
+
+/* Smooth all transitions globally */
+*, *::before, *::after {
+  transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+}
