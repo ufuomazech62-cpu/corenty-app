@@ -1,23 +1,24 @@
-const { neon } = require('@neondatabase/serverless');
-const fs = require('fs');
-const path = require('path');
+import { neon } from '@neondatabase/serverless';
+import { readFileSync } from 'fs';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
-const DATABASE_URL = 'postgresql://neondb_owner:npg_JXJXJXJX@ep-super-salad-aqu2fjus-pooler.c-8.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=require';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+const sql = neon(process.env.DATABASE_URL);
 
 async function runSchema() {
-  console.log('Connecting to database...');
-  const sql = neon(DATABASE_URL);
-
-  console.log('Reading schema file...');
-  const schemaPath = path.join(__dirname, 'api', 'schema.sql');
-  const schema = fs.readFileSync(schemaPath, 'utf8');
-
-  console.log('Executing schema...');
   try {
+    console.log('Reading schema file...');
+    const schemaPath = join(__dirname, 'api', 'schema.sql');
+    const schema = readFileSync(schemaPath, 'utf-8');
+    
+    console.log('Executing schema...');
     await sql(schema);
-    console.log('✅ Schema executed successfully!');
+    console.log('Schema executed successfully!');
   } catch (error) {
-    console.error('❌ Error executing schema:', error.message);
+    console.error('Error executing schema:', error);
     process.exit(1);
   }
 }
