@@ -13,51 +13,53 @@ function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState<any>(null)
 
-  // Check if user has completed onboarding before
   useEffect(() => {
     const hasCompletedOnboarding = localStorage.getItem('corenty_onboarding_complete')
     if (hasCompletedOnboarding === 'true') {
-      // Load saved user data
       const savedUser = localStorage.getItem('corenty_user')
-      if (savedUser) {
-        setUser(JSON.parse(savedUser))
-      }
+      if (savedUser) setUser(JSON.parse(savedUser))
     }
   }, [])
 
+  // Lock body scroll for app screens, allow scroll for landing/signin
+  useEffect(() => {
+    const locked = page === 'onboarding' || page === 'dashboard'
+    if (locked) {
+      document.body.classList.add('app-locked')
+    } else {
+      document.body.classList.remove('app-locked')
+    }
+    return () => document.body.classList.remove('app-locked')
+  }, [page])
+
   const navigate = (p: string, data?: any) => {
     window.scrollTo({ top: 0, behavior: 'instant' })
-    
-    // If signing in, check if first-time user
+
     if (p === 'signin') {
       const hasCompletedOnboarding = localStorage.getItem('corenty_onboarding_complete')
       if (hasCompletedOnboarding === 'true') {
-        // Returning user — go straight to dashboard
         const savedUser = localStorage.getItem('corenty_user')
-        if (savedUser) {
-          setUser(JSON.parse(savedUser))
-        }
+        if (savedUser) setUser(JSON.parse(savedUser))
         setPage('dashboard')
         return
       }
     }
-    
-    // If completing onboarding, save the status and user data
+
     if (p === 'dashboard' && data) {
       localStorage.setItem('corenty_onboarding_complete', 'true')
       localStorage.setItem('corenty_user', JSON.stringify(data))
       setUser(data)
     }
-    
+
     if (data && p !== 'dashboard') {
-      setUser(prev => ({ ...prev, ...data }))
+      setUser((prev: any) => ({ ...prev, ...data }))
     }
-    
+
     setPage(p)
   }
 
   return (
-    <div className="min-h-screen bg-cream font-body text-ink antialiased">
+    <div className={`min-h-screen bg-cream font-body text-ink antialiased ${page === 'onboarding' || page === 'dashboard' ? 'h-[100dvh] overflow-hidden' : ''}`}>
       <AnimatePresence mode="wait">
         {page === 'landing' && (
           <>
