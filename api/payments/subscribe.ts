@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
+import { getUserFromRequest } from '../auth/jwt';
 
 const sql = neon(process.env.DATABASE_URL!);
 
@@ -7,7 +8,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
     // Get subscription status
     try {
-      const { getUserFromRequest } = await import('./jwt');
       const userId = await getUserFromRequest(req);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
@@ -33,7 +33,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'POST') {
     // Initialize subscription
     try {
-      const { getUserFromRequest } = await import('./jwt');
       const userId = await getUserFromRequest(req);
       if (!userId) {
         return res.status(401).json({ error: 'Unauthorized' });
