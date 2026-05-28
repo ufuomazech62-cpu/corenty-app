@@ -1,14 +1,8 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { put } from '@vercel/blob';
 import { getUserFromRequest } from '../auth/jwt';
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -19,25 +13,26 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Parse multipart form data
+    const { filename } = req.query;
+    if (!filename || typeof filename !== 'string') {
+      return res.status(400).json({ error: 'Missing filename' });
+    }
+
+    // Get file from request body
     const chunks: Buffer[] = [];
     for await (const chunk of req) {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+      chunks.push(chunk);
     }
     const buffer = Buffer.concat(chunks);
 
-    // Get filename from query or generate one
-    const filename = (req.query.filename as string) || `upload-${Date.now()}`;
-    
     // Upload to Vercel Blob
     const blob = await put(filename, buffer, {
-      access: 'public',
-      token: process.env.BLOB_READ_WRITE_TOKEN,
+      access: 'public'
     });
 
     return res.status(200).json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Upload failed' });
+    return res.status(500).json({ error: 'Failed to upload file' });
   }
 }

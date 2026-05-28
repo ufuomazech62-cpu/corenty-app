@@ -1,8 +1,10 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import sql from '../db';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { neon } from '@neondatabase/serverless';
 import { getUserFromRequest } from './jwt';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+const sql = neon(process.env.DATABASE_URL!);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -14,10 +16,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const users = await sql`
-      SELECT id, email, name, profile_photo, institution, matric_number, verified, 
-             mode, bio, socials, distance_to_campus, budget, preferred_area,
-             subscription_status, subscription_expires_at
-      FROM users 
+      SELECT id, email, name, profile_photo, institution, matric_number, verified,
+             mode, onboarding_complete, bio, socials, distance_to_campus, budget,
+             preferred_location, subscription_status, subscription_expires_at
+      FROM users
       WHERE id = ${userId}
     `;
 
@@ -27,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     return res.status(200).json(users[0]);
   } catch (error) {
-    console.error('Get user error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    console.error('Get current user error:', error);
+    return res.status(500).json({ error: 'Failed to fetch user' });
   }
 }

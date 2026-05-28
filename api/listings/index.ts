@@ -1,8 +1,10 @@
-import type { NextApiRequest, NextApiResponse };
-import sql from '../db';
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { neon } from '@neondatabase/serverless';
 import { getUserFromRequest } from '../auth/jwt';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+const sql = neon(process.env.DATABASE_URL!);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   const userId = await getUserFromRequest(req);
   if (!userId) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -13,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const {
         mode, title, price, location, description, photos,
-        apartment_title, apartment_price, apartment_location, 
+        apartment_title, apartment_price, apartment_location,
         apartment_description, apartment_photos, distance_to_campus
       } = req.body;
 
@@ -38,20 +40,43 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   }
 
   if (req.method === 'GET') {
-    // Get all listings (excluding user's own) for dashboard feed
-    try {
-      const listings = await sql`
-        SELECT l.*, u.name as u_name, u.profile_photo as u_photo, u.institution, u.verified
-        FROM listings l
-        JOIN users u ON l.user_id = u.id
-        WHERE l.user_id != ${userId}
-        ORDER BY l.created_at DESC
-        LIMIT 50
-      `;
-      return res.status(200).json(listings);
-    } catch (error) {
-      console.error('Get listings error:', error);
-      return res.status(500).json({ error: 'Failed to fetch listings' });
+    const { id } = req.query;
+    
+    if (id) {
+      // Get single listing by ID
+      try {
+        const listings = await sql`
+          SELECT l.*, u.name as u_name, u.profile_photo as u_photo, u.institution, u.verified
+          FROM listings l
+          JOIN users u ON l.user_id = u.id
+          WHERE l.id = ${id}
+        `;
+        
+        if (listings.length === 0) {
+          return res.status(404).json({ error: 'Listing not found' });
+        }
+        
+        return res.status(200).json(listings[0]);
+      } catch (error) {
+        console.error('Get listing error:', error);
+        return res.status(500).json({ error: 'Failed to fetch listing' });
+      }
+    } else {
+      // Get all listings (excluding user's own) for dashboard feed
+      try {
+        const listings = await sql`
+          SELECT l.*, u.name as u_name, u.profile_photo as u_photo, u.institution, u.verified
+          FROM listings l
+          JOIN users u ON l.user_id = u.id
+          WHERE l.user_id != ${userId}
+          ORDER BY l.created_at DESC
+          LIMIT 50
+        `;
+        return res.status(200).json(listings);
+      } catch (error) {
+        console.error('Get listings error:', error);
+        return res.status(500).json({ error: 'Failed to fetch listings' });
+      }
     }
   }
 
@@ -59,19 +84,38 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Update listing
     try {
       const { id, ...updates } = req.body;
-      
-      const listing = await sql`
+
+      // Build dynamic update query
+      const setClauses: string[] = [];
+      const values: any[] = [];
+      let paramIndex = 1;
+
+      for (const [key, value] of Object.entries(updates)) {
+        if (value !== undefined) {
+          setClauses.push(`${key} = $${paramIndex}`);
+          values.push(value);
+          paramIndex++;
+        }
+      }
+
+      setClauses.push(`updated_at = NOW()`);
+
+      const query = `
         UPDATE listings 
-        SET ${sql(updates)}, updated_at = NOW()
-        WHERE id = ${id} AND user_id = ${userId}
+        SET ${setClauses.join(', ')}
+        WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
         RETURNING *
       `;
 
-      if (listing.length === 0) {
+      values.push(id, userId);
+
+      const result = await sql.query(query, values);
+
+      if (result.length === 0) {
         return res.status(404).json({ error: 'Listing not found' });
       }
 
-      return res.status(200).json(listing[0]);
+      return res.status(200).json(result[0]);
     } catch (error) {
       console.error('Update listing error:', error);
       return res.status(500).json({ error: 'Failed to update listing' });
@@ -82,7 +126,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // Delete listing
     try {
       const { id } = req.query;
-      
+
       await sql`
         DELETE FROM listings WHERE id = ${id} AND user_id = ${userId}
       `;

@@ -41,7 +41,7 @@ class ApiClient {
   }
 
   async getListingById(id: number) {
-    return this.request<Listing>(`/listings/${id}`)
+    return this.request<Listing>(`/listings?id=${id}`)
   }
 
   async createListing(data: Partial<Listing>) {
@@ -52,14 +52,14 @@ class ApiClient {
   }
 
   async updateListing(id: number, data: Partial<Listing>) {
-    return this.request<Listing>(`/listings/${id}`, {
+    return this.request<Listing>('/listings', {
       method: 'PUT',
-      body: JSON.stringify(data),
+      body: JSON.stringify({ id, ...data }),
     })
   }
 
   async deleteListing(id: number) {
-    return this.request<{ success: boolean }>(`/listings/${id}`, {
+    return this.request<{ success: boolean }>(`/listings?id=${id}`, {
       method: 'DELETE',
     })
   }
@@ -89,7 +89,9 @@ class ApiClient {
   }
 
   async getSubscriptionStatus() {
-    return this.request<{ status: string; expires_at: string | null }>('/payments/status')
+    return this.request<{ status: string; expires_at: string | null }>('/payments/subscribe', {
+      method: 'GET',
+    })
   }
 
   // Upload
