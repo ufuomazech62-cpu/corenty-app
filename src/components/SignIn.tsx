@@ -59,5 +59,3 @@ const SignIn: React.FC<SignInProps> = ({ onNavigate }) => {
 }
 
 export default SignIn
-/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-9c21cad8d835.sh: No such file or directory
-/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-9c21cad8d835.txt: No such file or directory
