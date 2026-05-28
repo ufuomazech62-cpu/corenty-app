@@ -1,14 +1,9 @@
-import React, { useState } from 'react'
+import React, { useState, useRef } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Home, ArrowLeft, ArrowRight, Check, Upload, Camera, Shield, GraduationCap } from 'lucide-react'
-
-const INSTITUTION_TYPES = [
-  'University',
-  'Polytechnic',
-  'College of Education',
-  'Monotechnic',
-  'Other',
-]
+import {
+  Home, ArrowLeft, ArrowRight, Check, Upload, Camera, Shield,
+  GraduationCap, Plus, X, Instagram, Facebook, Mail, Phone, AtSign
+} from 'lucide-react'
 
 const NIGERIAN_INSTITUTIONS = [
   'University of Lagos (UNILAG)',
@@ -40,12 +35,14 @@ interface OnboardingProps {
 const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
   const [step, setStep] = useState(0)
   const [mode, setMode] = useState<'have' | 'need' | null>(null)
-  const [instType, setInstType] = useState('')
   const [institution, setInstitution] = useState('')
+  const [instInput, setInstInput] = useState('')
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const [matricNumber, setMatricNumber] = useState('')
   const [verificationMethod, setVerificationMethod] = useState<'matric' | 'id' | null>(null)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
+  const [profileImages, setProfileImages] = useState<string[]>([])
   const [apartmentPhotos, setApartmentPhotos] = useState<string[]>([])
   const [apartmentTitle, setApartmentTitle] = useState('')
   const [apartmentPrice, setApartmentPrice] = useState('')
@@ -53,10 +50,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
   const [apartmentDesc, setApartmentDesc] = useState('')
   const [budget, setBudget] = useState('')
   const [preferredArea, setPreferredArea] = useState('')
-  const [uniSearch, setUniSearch] = useState('')
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [bio, setBio] = useState('')
+  const [socials, setSocials] = useState({
+    tiktok: '',
+    instagram: '',
+    facebook: '',
+    whatsapp: '',
+    email: '',
+    twitter: '',
+  })
+  const [distanceToCampus, setDistanceToCampus] = useState(2)
 
-  const totalSteps = mode === 'have' ? 5 : 4
+  const totalSteps = mode === 'have' ? 6 : 5
   const next = () => setStep(s => Math.min(s + 1, totalSteps))
   const back = () => setStep(s => Math.max(s - 1, 0))
 
@@ -67,7 +72,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
     }
   }
 
-  const handleMultiplePhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMultipleProfileImages = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files) {
+      Array.from(files).forEach(file => {
+        if (file.type.startsWith('image/')) {
+          setProfileImages(prev => [...prev, URL.createObjectURL(file)])
+        }
+      })
+    }
+  }
+
+  const handleMultipleApartmentPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (files) {
       Array.from(files).forEach(file => {
@@ -78,9 +94,32 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
     }
   }
 
-  const filteredSuggestions = uniSearch.length > 0
-    ? NIGERIAN_INSTITUTIONS.filter(i => i.toLowerCase().includes(uniSearch.toLowerCase())).slice(0, 5)
+  const removeProfileImage = (index: number) => {
+    setProfileImages(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const removeApartmentPhoto = (index: number) => {
+    setApartmentPhotos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const filteredSuggestions = instInput.length > 0
+    ? NIGERIAN_INSTITUTIONS.filter(i => i.toLowerCase().includes(instInput.toLowerCase())).slice(0, 5)
     : []
+
+  const handleInstSelect = (name: string) => {
+    setInstitution(name)
+    setInstInput(name)
+    setShowSuggestions(false)
+  }
+
+  const handleInstBlur = () => {
+    setTimeout(() => {
+      setShowSuggestions(false)
+      if (instInput && !institution) {
+        setInstitution(instInput)
+      }
+    }, 200)
+  }
 
   const handleFinish = () => {
     onNavigate('dashboard', {
@@ -88,9 +127,23 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
       institution,
       matricNumber,
       profilePhoto,
+      profileImages,
+      apartmentPhotos,
+      apartmentTitle,
+      apartmentPrice,
+      apartmentLocation,
+      apartmentDesc,
+      budget,
+      preferredArea,
+      bio,
+      socials,
+      distanceToCampus,
       name: 'You',
     })
   }
+
+  const instStepValid = institution && verificationMethod &&
+    ((verificationMethod === 'matric' && matricNumber) || (verificationMethod === 'id' && idPhoto))
 
   return (
     <div className="min-h-screen bg-cream flex flex-col">
@@ -178,7 +231,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
               </motion.div>
             )}
 
-            {/* Step 1: Institution & verification method */}
+            {/* Step 1: Institution & verification (free text) */}
             {step === 1 && (
               <motion.div key="verify" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
@@ -187,47 +240,42 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
                 <p className="text-ink mb-8">This keeps CoRenty safe for everyone.</p>
 
                 <div className="space-y-5">
-                  {/* Institution type */}
-                  <div>
-                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 block">Institution type</label>
-                    <div className="flex flex-wrap gap-2">
-                      {INSTITUTION_TYPES.map(type => (
-                        <button
-                          key={type}
-                          onClick={() => setInstType(type)}
-                          className={`px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${instType === type ? 'bg-ink text-cream' : 'bg-cream border border-border text-ink hover:border-ink/20'}`}
-                        >
-                          {type}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Institution search */}
+                  {/* Institution free text */}
                   <div className="relative">
                     <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 block">Your institution</label>
                     <input
                       type="text"
-                      value={uniSearch || institution}
+                      value={instInput}
                       onChange={e => {
-                        const val = e.target.value
-                        setUniSearch(val)
+                        setInstInput(e.target.value)
                         setInstitution('')
+                        setShowSuggestions(true)
                       }}
-                      placeholder="Search your school..."
+                      onFocus={() => setShowSuggestions(true)}
+                      onBlur={handleInstBlur}
+                      placeholder="Type your school name..."
                       className="w-full px-5 py-4 bg-cream border border-border rounded-2xl font-medium text-ink focus:outline-none focus:border-ink/30 transition-all"
                     />
-                    {filteredSuggestions.length > 0 && !institution && (
+                    {showSuggestions && filteredSuggestions.length > 0 && !institution && (
                       <div className="absolute top-full left-0 right-0 mt-2 bg-surface border border-border rounded-2xl shadow-xl overflow-hidden z-10">
                         {filteredSuggestions.map(s => (
                           <button
                             key={s}
-                            onClick={() => { setInstitution(s); setUniSearch('') }}
+                            onMouseDown={() => handleInstSelect(s)}
                             className="w-full text-left px-5 py-3 hover:bg-cream text-ink text-sm font-medium transition-colors"
                           >
                             {s}
                           </button>
                         ))}
+                      </div>
+                    )}
+                    {institution && (
+                      <div className="flex items-center gap-2 mt-2 px-3 py-2 bg-ink/5 rounded-xl">
+                        <Check size={14} className="text-like" />
+                        <span className="text-sm font-medium text-ink">{institution}</span>
+                        <button onClick={() => { setInstitution(''); setInstInput('') }} className="ml-auto p-1 hover:bg-cream rounded-lg">
+                          <X size={12} className="text-ink" />
+                        </button>
                       </div>
                     )}
                   </div>
@@ -293,7 +341,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
                   </button>
                   <button
                     onClick={next}
-                    disabled={!institution || !verificationMethod || (verificationMethod === 'matric' && !matricNumber) || (verificationMethod === 'id' && !idPhoto)}
+                    disabled={!instStepValid}
                     className="flex-[2] py-4 bg-ink text-cream rounded-2xl font-semibold hover:bg-ink/90 transition-all flex items-center justify-center gap-2 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed"
                   >
                     Continue <ArrowRight size={18} />
@@ -302,31 +350,55 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
               </motion.div>
             )}
 
-            {/* Step 2: Profile photo */}
+            {/* Step 2: Profile photo + extra images */}
             {step === 2 && (
               <motion.div key="photo" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
-                  Add a profile photo
+                  Add your photos
                 </h2>
-                <p className="text-ink mb-8">Help others recognize you. A clear photo gets more matches.</p>
+                <p className="text-ink mb-8">A clear profile photo gets more matches. Add extras to stand out.</p>
 
+                {/* Main profile photo */}
                 <div className="flex justify-center mb-8">
                   <label className="relative cursor-pointer group">
-                    <div className="w-40 h-40 rounded-full bg-cream border-4 border-border overflow-hidden flex items-center justify-center group-hover:border-ink/30 transition-all">
+                    <div className="w-36 h-36 rounded-full bg-cream border-4 border-border overflow-hidden flex items-center justify-center group-hover:border-ink/30 transition-all">
                       {profilePhoto ? (
                         <img src={profilePhoto} alt="Profile" className="w-full h-full object-cover" />
                       ) : (
-                        <Camera className="w-12 h-12 text-ink" strokeWidth={1.5} />
+                        <Camera className="w-10 h-10 text-ink" strokeWidth={1.5} />
                       )}
                     </div>
-                    <div className="absolute -bottom-1 right-0 w-10 h-10 rounded-full bg-ink flex items-center justify-center shadow-lg">
+                    <div className="absolute -bottom-1 right-0 w-9 h-9 rounded-full bg-ink flex items-center justify-center shadow-lg">
                       <Upload className="w-4 h-4 text-cream" />
                     </div>
                     <input type="file" accept="image/*" onChange={handlePhotoUpload(setProfilePhoto)} className="hidden" />
                   </label>
                 </div>
 
-                <div className="flex gap-3">
+                {/* Extra profile images */}
+                <div>
+                  <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-3 block">More photos (optional)</label>
+                  <div className="grid grid-cols-4 gap-3">
+                    {profileImages.map((img, i) => (
+                      <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-cream border border-border relative group">
+                        <img src={img} alt="" className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeProfileImage(i)}
+                          className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X size={12} className="text-cream" />
+                        </button>
+                      </div>
+                    ))}
+                    <label className="aspect-square rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-ink/30 transition-all bg-cream">
+                      <Plus className="w-5 h-5 text-ink mb-0.5" strokeWidth={2} />
+                      <span className="text-[10px] font-medium text-ink">Add</span>
+                      <input type="file" accept="image/*" multiple onChange={handleMultipleProfileImages} className="hidden" />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
                   <button onClick={back} className="flex-1 py-4 bg-cream rounded-2xl font-semibold text-ink hover:bg-border transition-all flex items-center justify-center gap-2">
                     <ArrowLeft size={18} /> Back
                   </button>
@@ -341,8 +413,88 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
               </motion.div>
             )}
 
-            {/* Step 3: Have place → apartment details / Need place → preferences */}
-            {step === 3 && mode === 'have' && (
+            {/* Step 3: Bio + Social links */}
+            {step === 3 && (
+              <motion.div key="bio" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+                <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
+                  Tell people about <span className="font-serif italic">you</span>
+                </h2>
+                <p className="text-ink mb-8">A short bio and your socials help others get to know you.</p>
+
+                <div className="space-y-5">
+                  <div>
+                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 block">About you</label>
+                    <textarea
+                      value={bio}
+                      onChange={e => setBio(e.target.value)}
+                      placeholder="What should potential roommates know about you? Hobbies, lifestyle, habits..."
+                      rows={3}
+                      maxLength={300}
+                      className="w-full px-5 py-4 bg-cream border border-border rounded-2xl font-medium text-ink focus:outline-none focus:border-ink/30 transition-all resize-none"
+                    />
+                    <p className="text-xs text-ink mt-1 text-right">{bio.length}/300</p>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-3 block">Social links</label>
+                    <div className="space-y-3">
+                      <SocialInput
+                        icon={<Instagram size={16} />}
+                        placeholder="Instagram handle"
+                        value={socials.instagram}
+                        onChange={v => setSocials(s => ({ ...s, instagram: v }))}
+                      />
+                      <SocialInput
+                        icon={<span className="text-xs font-bold">TT</span>}
+                        placeholder="TikTok handle"
+                        value={socials.tiktok}
+                        onChange={v => setSocials(s => ({ ...s, tiktok: v }))}
+                      />
+                      <SocialInput
+                        icon={<Facebook size={16} />}
+                        placeholder="Facebook name or link"
+                        value={socials.facebook}
+                        onChange={v => setSocials(s => ({ ...s, facebook: v }))}
+                      />
+                      <SocialInput
+                        icon={<Phone size={16} />}
+                        placeholder="WhatsApp number"
+                        value={socials.whatsapp}
+                        onChange={v => setSocials(s => ({ ...s, whatsapp: v }))}
+                      />
+                      <SocialInput
+                        icon={<Mail size={16} />}
+                        placeholder="Email address"
+                        value={socials.email}
+                        onChange={v => setSocials(s => ({ ...s, email: v }))}
+                      />
+                      <SocialInput
+                        icon={<AtSign size={16} />}
+                        placeholder="Twitter / X handle"
+                        value={socials.twitter}
+                        onChange={v => setSocials(s => ({ ...s, twitter: v }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-8">
+                  <button onClick={back} className="flex-1 py-4 bg-cream rounded-2xl font-semibold text-ink hover:bg-border transition-all flex items-center justify-center gap-2">
+                    <ArrowLeft size={18} /> Back
+                  </button>
+                  <button
+                    onClick={next}
+                    disabled={!bio}
+                    className="flex-[2] py-4 bg-ink text-cream rounded-2xl font-semibold hover:bg-ink/90 transition-all flex items-center justify-center gap-2 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed"
+                  >
+                    Continue <ArrowRight size={18} />
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Step 4: Have → Apartment details + photos + distance / Need → Preferences */}
+            {step === 4 && mode === 'have' && (
               <motion.div key="apartment" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
                   Tell us about your place
@@ -392,6 +544,68 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
                       className="w-full px-5 py-4 bg-cream border border-border rounded-2xl font-medium text-ink focus:outline-none focus:border-ink/30 transition-all resize-none"
                     />
                   </div>
+
+                  {/* Apartment photos */}
+                  <div>
+                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-2 block">Apartment photos</label>
+                    <div className="grid grid-cols-4 gap-3">
+                      {apartmentPhotos.map((photo, i) => (
+                        <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-cream border border-border relative group">
+                          <img src={photo} alt="" className="w-full h-full object-cover" />
+                          <button
+                            onClick={() => removeApartmentPhoto(i)}
+                            className="absolute top-1 right-1 w-6 h-6 rounded-full bg-ink/70 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <X size={12} className="text-cream" />
+                          </button>
+                        </div>
+                      ))}
+                      <label className="aspect-square rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-ink/30 transition-all bg-cream">
+                        <Upload className="w-5 h-5 text-ink mb-0.5" strokeWidth={1.5} />
+                        <span className="text-[10px] font-medium text-ink">Add</span>
+                        <input type="file" accept="image/*" multiple onChange={handleMultipleApartmentPhotos} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Distance to campus slider */}
+                  <div>
+                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-3 block">
+                      Distance from apartment to campus
+                    </label>
+                    <div className="bg-surface border border-border rounded-2xl p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm font-medium text-ink">Walking distance</span>
+                        <span className="text-2xl font-display font-bold text-brand">{distanceToCampus} km</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min={0.5}
+                          max={10}
+                          step={0.5}
+                          value={distanceToCampus}
+                          onChange={e => setDistanceToCampus(parseFloat(e.target.value))}
+                          className="w-full h-2 rounded-full appearance-none cursor-pointer accent-brand"
+                          style={{
+                            background: `linear-gradient(to right, #e85d04 0%, #e85d04 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 100%)`
+                          }}
+                        />
+                        <div className="flex justify-between mt-2">
+                          <span className="text-[10px] text-ink">0.5 km</span>
+                          <span className="text-[10px] text-ink">5 km</span>
+                          <span className="text-[10px] text-ink">10 km</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-cream rounded-xl">
+                        <span className="text-xs">
+                          {distanceToCampus <= 1 ? '🚶 Right on campus!' :
+                           distanceToCampus <= 3 ? '🚶 Easy walk' :
+                           distanceToCampus <= 5 ? '🚌 Short commute' : '🚗 Longer commute'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-8">
@@ -400,7 +614,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
                   </button>
                   <button
                     onClick={next}
-                    disabled={!apartmentTitle || !apartmentPrice || !apartmentLocation}
+                    disabled={!apartmentTitle || !apartmentPrice || !apartmentLocation || apartmentPhotos.length === 0}
                     className="flex-[2] py-4 bg-ink text-cream rounded-2xl font-semibold hover:bg-ink/90 transition-all flex items-center justify-center gap-2 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed"
                   >
                     Continue <ArrowRight size={18} />
@@ -409,7 +623,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
               </motion.div>
             )}
 
-            {step === 3 && mode === 'need' && (
+            {step === 4 && mode === 'need' && (
               <motion.div key="prefs" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
                   What are you looking for?
@@ -437,6 +651,45 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
                       className="w-full px-5 py-4 bg-cream border border-border rounded-2xl font-medium text-ink focus:outline-none focus:border-ink/30 transition-all"
                     />
                   </div>
+
+                  {/* Distance preference slider */}
+                  <div>
+                    <label className="text-xs font-semibold text-ink uppercase tracking-wider mb-3 block">
+                      Max distance to campus
+                    </label>
+                    <div className="bg-surface border border-border rounded-2xl p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <span className="text-sm font-medium text-ink">Walking distance</span>
+                        <span className="text-2xl font-display font-bold text-brand">{distanceToCampus} km</span>
+                      </div>
+                      <div className="relative">
+                        <input
+                          type="range"
+                          min={0.5}
+                          max={10}
+                          step={0.5}
+                          value={distanceToCampus}
+                          onChange={e => setDistanceToCampus(parseFloat(e.target.value))}
+                          className="w-full h-2 rounded-full appearance-none cursor-pointer accent-brand"
+                          style={{
+                            background: `linear-gradient(to right, #e85d04 0%, #e85d04 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 100%)`
+                          }}
+                        />
+                        <div className="flex justify-between mt-2">
+                          <span className="text-[10px] text-ink">0.5 km</span>
+                          <span className="text-[10px] text-ink">5 km</span>
+                          <span className="text-[10px] text-ink">10 km</span>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-cream rounded-xl">
+                        <span className="text-xs">
+                          {distanceToCampus <= 1 ? '🚶 Right on campus!' :
+                           distanceToCampus <= 3 ? '🚶 Easy walk' :
+                           distanceToCampus <= 5 ? '🚌 Short commute' : '🚗 Longer commute'}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-8">
@@ -454,72 +707,46 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
               </motion.div>
             )}
 
-            {/* Step 4: Apartment photos (have mode) or Review (need mode) */}
-            {step === 4 && mode === 'have' && (
-              <motion.div key="aptphotos" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
-                <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
-                  Add apartment photos
-                </h2>
-                <p className="text-ink mb-8">Show off your space. Listings with photos get 3x more matches.</p>
-
-                <div className="grid grid-cols-3 gap-3 mb-6">
-                  {apartmentPhotos.map((photo, i) => (
-                    <div key={i} className="aspect-square rounded-2xl overflow-hidden bg-cream border border-border">
-                      <img src={photo} alt="" className="w-full h-full object-cover" />
-                    </div>
-                  ))}
-                  <label className="aspect-square rounded-2xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-ink/30 transition-all bg-cream">
-                    <Upload className="w-6 h-6 text-ink mb-1" strokeWidth={1.5} />
-                    <span className="text-xs font-medium text-ink">Add</span>
-                    <input type="file" accept="image/*" multiple onChange={handleMultiplePhotos} className="hidden" />
-                  </label>
-                </div>
-
-                <div className="flex gap-3">
-                  <button onClick={back} className="flex-1 py-4 bg-cream rounded-2xl font-semibold text-ink hover:bg-border transition-all flex items-center justify-center gap-2">
-                    <ArrowLeft size={18} /> Back
-                  </button>
-                  <button
-                    onClick={next}
-                    disabled={apartmentPhotos.length === 0}
-                    className="flex-[2] py-4 bg-ink text-cream rounded-2xl font-semibold hover:bg-ink/90 transition-all flex items-center justify-center gap-2 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed"
-                  >
-                    Continue <ArrowRight size={18} />
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {step === 4 && mode === 'need' && (
-              <motion.div key="review" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+            {/* Step 5: Have → Review / Need → Review */}
+            {step === 5 && mode === 'need' && (
+              <motion.div key="review-need" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <ReviewStep
                   mode={mode}
                   institution={institution}
                   profilePhoto={profilePhoto}
+                  profileImages={profileImages}
+                  bio={bio}
+                  socials={socials}
                   budget={budget}
                   preferredArea={preferredArea}
+                  distanceToCampus={distanceToCampus}
                   onFinish={handleFinish}
                   onBack={back}
                 />
               </motion.div>
             )}
 
-            {/* Step 5: Review (have mode) */}
             {step === 5 && mode === 'have' && (
-              <motion.div key="review2" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
+              <motion.div key="review-have" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} transition={{ duration: 0.3 }}>
                 <ReviewStep
                   mode={mode}
                   institution={institution}
                   profilePhoto={profilePhoto}
+                  profileImages={profileImages}
+                  bio={bio}
+                  socials={socials}
                   apartmentTitle={apartmentTitle}
                   apartmentPrice={apartmentPrice}
                   apartmentLocation={apartmentLocation}
-                  apartmentPhotos={apartmentPhotos.length}
+                  apartmentPhotos={apartmentPhotos}
+                  distanceToCampus={distanceToCampus}
                   onFinish={handleFinish}
                   onBack={back}
                 />
               </motion.div>
             )}
+
+            {/* Step 6: Have → final (not used, review is step 5) */}
 
           </AnimatePresence>
         </div>
@@ -528,19 +755,42 @@ const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
   )
 }
 
+const SocialInput: React.FC<{
+  icon: React.ReactNode
+  placeholder: string
+  value: string
+  onChange: (v: string) => void
+}> = ({ icon, placeholder, value, onChange }) => (
+  <div className="flex items-center gap-3 px-4 py-3 bg-cream border border-border rounded-2xl focus-within:border-ink/30 transition-all">
+    <span className="text-ink shrink-0">{icon}</span>
+    <input
+      type="text"
+      value={value}
+      onChange={e => onChange(e.target.value)}
+      placeholder={placeholder}
+      className="flex-1 bg-transparent font-medium text-ink focus:outline-none text-sm placeholder:text-ink/40"
+    />
+    {value && <Check size={14} className="text-like shrink-0" />}
+  </div>
+)
+
 const ReviewStep: React.FC<{
   mode: 'have' | 'need'
   institution: string
   profilePhoto: string | null
+  profileImages: string[]
+  bio: string
+  socials: Record<string, string>
   budget?: string
   preferredArea?: string
   apartmentTitle?: string
   apartmentPrice?: string
   apartmentLocation?: string
-  apartmentPhotos?: number
+  apartmentPhotos?: string[]
+  distanceToCampus?: number
   onFinish: () => void
   onBack: () => void
-}> = ({ mode, institution, profilePhoto, budget, preferredArea, apartmentTitle, apartmentPrice, apartmentLocation, apartmentPhotos, onFinish, onBack }) => (
+}> = ({ mode, institution, profilePhoto, profileImages, bio, socials, budget, preferredArea, apartmentTitle, apartmentPrice, apartmentLocation, apartmentPhotos, distanceToCampus, onFinish, onBack }) => (
   <div>
     <h2 className="text-3xl font-display font-bold tracking-tight mb-2 text-ink">
       All set!
@@ -556,11 +806,31 @@ const ReviewStep: React.FC<{
         </div>
       </div>
 
+      {profileImages.length > 0 && (
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {profileImages.map((img, i) => (
+            <img key={i} src={img} className="w-16 h-16 rounded-xl object-cover shrink-0" alt="" />
+          ))}
+        </div>
+      )}
+
+      <div className="p-4 bg-surface border border-border rounded-2xl">
+        <p className="text-sm text-ink">{bio}</p>
+      </div>
+
+      {Object.values(socials).some(v => v) && (
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(socials).filter(([_, v]) => v).map(([key, val]) => (
+            <span key={key} className="px-3 py-1.5 bg-cream rounded-xl text-xs font-medium text-ink capitalize">{key}: {val}</span>
+          ))}
+        </div>
+      )}
+
       {mode === 'have' && (
         <div className="p-4 bg-surface border border-border rounded-2xl">
           <p className="font-display font-bold text-ink mb-1">{apartmentTitle}</p>
           <p className="text-sm text-ink">₦{apartmentPrice}/yr · {apartmentLocation}</p>
-          <p className="text-xs text-ink mt-1">{apartmentPhotos} photo{apartmentPhotos !== 1 ? 's' : ''} uploaded</p>
+          <p className="text-xs text-ink mt-1">{apartmentPhotos?.length || 0} photo{(apartmentPhotos?.length || 0) !== 1 ? 's' : ''} · {distanceToCampus} km to campus</p>
         </div>
       )}
 
@@ -568,6 +838,7 @@ const ReviewStep: React.FC<{
         <div className="p-4 bg-surface border border-border rounded-2xl">
           <p className="text-sm text-ink">Budget: ₦{budget}/yr</p>
           <p className="text-sm text-ink">Preferred area: {preferredArea || 'Flexible'}</p>
+          <p className="text-sm text-ink">Max distance: {distanceToCampus} km to campus</p>
         </div>
       )}
     </div>
