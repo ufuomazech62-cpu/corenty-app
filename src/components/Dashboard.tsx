@@ -1,8 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { motion, AnimatePresence, useMotionValue, useTransform } from 'motion/react'
 import {
   Heart, X, MapPin, Home, Info, Sparkles, Phone, Mail, Instagram,
-  Grid3x3, Settings, User, LogOut, ChevronRight, ChevronLeft, Edit3, Trash2, Shield,
+  Settings, User, LogOut, ChevronRight, ChevronLeft, Edit3, Trash2, Shield,
   Plus, Camera, Check, Bell, BellOff, HelpCircle, Lock, Facebook, AtSign,
   ChevronDown, ChevronUp, Image, MessageCircle, AlertTriangle, Eye
 } from 'lucide-react'
@@ -1438,3 +1438,7 @@ const NotifToggle: React.FC<{ label: string; desc: string; value: boolean; onCha
 )
 
 export default Dashboard
+/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-c0937a4a9e96.sh: No such file or directory
+/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-c0937a4a9e96.txt: No such file or directory
+/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-c0937a4a9e96.sh: No such file or directory
+/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-c0937a4a9e96.txt: No such file or directory

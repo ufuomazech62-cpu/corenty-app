@@ -1,5 +1,5 @@
 import React from 'react'
-import { Home } from 'lucide-react'
+import { Home, Instagram, Mail } from 'lucide-react'
 
 const Footer: React.FC = () => {
   return (
@@ -24,25 +24,24 @@ const Footer: React.FC = () => {
             <div>
               <p className="text-xs font-semibold text-cream/40 uppercase tracking-wider mb-4">Product</p>
               <div className="space-y-3">
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">How it works</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Pricing</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Safety</a>
+                <a href="#how-it-works" className="block text-sm text-cream/80 hover:text-cream transition-colors">How it works</a>
+                <a href="#safety" className="block text-sm text-cream/80 hover:text-cream transition-colors">Safety</a>
+                <a href="#faq" className="block text-sm text-cream/80 hover:text-cream transition-colors">FAQ</a>
               </div>
             </div>
             <div>
               <p className="text-xs font-semibold text-cream/40 uppercase tracking-wider mb-4">Company</p>
               <div className="space-y-3">
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">About</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Blog</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Careers</a>
+                <a href="#about" className="block text-sm text-cream/80 hover:text-cream transition-colors">About</a>
+                <a href="#contact" className="block text-sm text-cream/80 hover:text-cream transition-colors">Contact</a>
+                <a href="#support" className="block text-sm text-cream/80 hover:text-cream transition-colors">Support</a>
               </div>
             </div>
             <div>
               <p className="text-xs font-semibold text-cream/40 uppercase tracking-wider mb-4">Legal</p>
               <div className="space-y-3">
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Privacy</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Terms</a>
-                <a href="#" className="block text-sm text-cream/80 hover:text-cream transition-colors">Contact</a>
+                <a href="#privacy" className="block text-sm text-cream/80 hover:text-cream transition-colors">Privacy</a>
+                <a href="#terms" className="block text-sm text-cream/80 hover:text-cream transition-colors">Terms</a>
               </div>
             </div>
           </div>
@@ -53,9 +52,15 @@ const Footer: React.FC = () => {
             © 2026 CoRenty. Built for students, by students.
           </p>
           <div className="flex items-center gap-6">
-            <a href="#" className="text-xs text-cream/50 hover:text-cream transition-colors">Twitter</a>
-            <a href="#" className="text-xs text-cream/50 hover:text-cream transition-colors">Instagram</a>
-            <a href="#" className="text-xs text-cream/50 hover:text-cream transition-colors">TikTok</a>
+            <a href="#twitter" aria-label="Twitter" className="text-cream/50 hover:text-cream transition-colors">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+            </a>
+            <a href="#instagram" aria-label="Instagram" className="text-cream/50 hover:text-cream transition-colors">
+              <Instagram className="w-4 h-4" />
+            </a>
+            <a href="#email" aria-label="Email" className="text-cream/50 hover:text-cream transition-colors">
+              <Mail className="w-4 h-4" />
+            </a>
           </div>
         </div>
       </div>

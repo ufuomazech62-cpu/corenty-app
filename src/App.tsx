@@ -65,7 +65,7 @@ function App() {
             <main>
               <Hero onNavigate={navigate} />
               <HowItWorks />
-              <Features />
+              <Features onNavigate={navigate} />
             </main>
             <Footer />
           </>

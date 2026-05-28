@@ -1,8 +1,12 @@
 import React from 'react'
 import { motion } from 'motion/react'
-import { Shield, Zap, Phone, MapPin, Users, Home } from 'lucide-react'
+import { Shield, Zap, Phone, MapPin } from 'lucide-react'
 
-const Features: React.FC = () => {
+interface FeaturesProps {
+  onNavigate: (page: string) => void
+}
+
+const Features: React.FC<FeaturesProps> = ({ onNavigate }) => {
   return (
     <section className="py-32 lg:py-48 px-6 lg:px-12">
       <div className="max-w-[1400px] mx-auto">
@@ -119,7 +123,7 @@ const Features: React.FC = () => {
               </p>
             </div>
             <button
-              onClick={() => window.scrollTo({ top: 0 })}
+              onClick={() => onNavigate('signin')}
               className="shrink-0 px-8 py-4 bg-ink text-cream rounded-full font-medium hover:bg-ink/90 transition-all duration-200 hover:scale-105 active:scale-95 whitespace-nowrap"
             >
               Get started →
