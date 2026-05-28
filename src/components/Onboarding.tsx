@@ -1,357 +1,663 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import {
-  Home, ArrowLeft, ArrowRight, Check, Upload, Camera, Shield,
-  GraduationCap, Plus, X, Mail, Phone
-} from 'lucide-react'
-import { TikTokIcon, InstagramIcon, FacebookIcon, XIcon, WhatsAppIcon } from './BrandIcons'
+import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
+import { api } from '../lib/api'
 
-const NIGERIAN_INSTITUTIONS = [
-  'University of Lagos (UNILAG)','University of Ibadan (UI)','University of Benin (UNIBEN)',
-  'Obafemi Awolowo University (OAU)','University of Nigeria, Nsukka (UNN)',
-  'Ahmadu Bello University (ABU)','Covenant University','Lagos State University (LASU)',
-  'Babcock University','Federal University of Technology, Akure (FUTA)',
-  'University of Ilorin (UNILORIN)','University of Port Harcourt (UNIPORT)',
-  'Yaba College of Technology (YabaTech)','Lagos State Polytechnic (LASPOTECH)',
-  'Federal Polytechnic, Offa','Federal Polytechnic, Nekede','Auchi Polytechnic',
-  'Alvan Ikoku College of Education','Federal College of Education, Abeokuta',
-  'Adeniran Ogunsanya College of Education',
-]
+interface OnboardingProps {
+  user: any
+  onNavigate: (page: string) => void
+  onComplete: () => void
+}
 
-interface OnboardingProps { onNavigate: (page: string, data?: any) => void }
+const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete }) => {
+  const [step, setStep] = useState(1)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
 
-const Onboarding: React.FC<OnboardingProps> = ({ onNavigate }) => {
-  const [step, setStep] = useState(0)
-  const [mode, setMode] = useState<'have' | 'need' | null>(null)
+  // Step 1: Personal Info
+  const [name, setName] = useState(user?.name || '')
   const [institution, setInstitution] = useState('')
-  const [instInput, setInstInput] = useState('')
-  const [showSuggestions, setShowSuggestions] = useState(false)
   const [matricNumber, setMatricNumber] = useState('')
-  const [verificationMethod, setVerificationMethod] = useState<'matric' | 'id' | null>(null)
-  const [idPhoto, setIdPhoto] = useState<string | null>(null)
+
+  // Step 2: Profile Photo
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null)
-  const [profileImages, setProfileImages] = useState<string[]>([])
-  const [apartmentPhotos, setApartmentPhotos] = useState<string[]>([])
+  const [profilePhotoFile, setProfilePhotoFile] = useState<File | null>(null)
+
+  // Step 3: Mode Selection
+  const [mode, setMode] = useState<'have' | 'need' | null>(null)
+
+  // Step 4: Listing Details (if mode === 'have')
   const [apartmentTitle, setApartmentTitle] = useState('')
   const [apartmentPrice, setApartmentPrice] = useState('')
   const [apartmentLocation, setApartmentLocation] = useState('')
-  const [apartmentDesc, setApartmentDesc] = useState('')
+  const [apartmentDescription, setApartmentDescription] = useState('')
+  const [apartmentPhotos, setApartmentPhotos] = useState<string[]>([])
+  const [apartmentPhotoFiles, setApartmentPhotoFiles] = useState<File[]>([])
+
+  // Step 5: Preferences (if mode === 'need')
   const [budget, setBudget] = useState('')
-  const [preferredArea, setPreferredArea] = useState('')
-  const [bio, setBio] = useState('')
-  const [socials, setSocials] = useState({ tiktok: '', instagram: '', facebook: '', whatsapp: '', email: '', twitter: '' })
+  const [preferredLocation, setPreferredLocation] = useState('')
   const [distanceToCampus, setDistanceToCampus] = useState(2)
 
-  const totalSteps = mode === 'have' ? 6 : 5
-  const next = () => setStep(s => Math.min(s + 1, totalSteps))
-  const back = () => setStep(s => Math.max(s - 1, 0))
+  // Step 6: Social Links
+  const [whatsapp, setWhatsapp] = useState('')
+  const [instagram, setInstagram] = useState('')
+  const [tiktok, setTiktok] = useState('')
+  const [facebook, setFacebook] = useState('')
+  const [twitter, setTwitter] = useState('')
+  const [email, setEmail] = useState(user?.email || '')
 
-  const handlePhotoUpload = (setter: (v: string) => void) => (e: React.ChangeEvent<HTMLInputElement>) => {
+  const nextStep = () => setStep(s => Math.min(s + 1, 6))
+  const prevStep = () => setStep(s => Math.max(s - 1, 1))
+
+  const handleProfilePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
-    if (file && file.type.startsWith('image/')) setter(URL.createObjectURL(file))
+    if (!file) return
+
+    setProfilePhotoFile(file)
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setProfilePhoto(reader.result as string)
+    }
+    reader.readAsDataURL(file)
   }
 
-  const handleMultiple = (setter: React.Dispatch<React.SetStateAction<string[]>>) => (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) Array.from(e.target.files).forEach(f => { if (f.type.startsWith('image/')) setter(prev => [...prev, URL.createObjectURL(f)]) })
+  const handleApartmentPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    const newFiles = Array.from(files)
+    setApartmentPhotoFiles(prev => [...prev, ...newFiles])
+
+    for (const file of newFiles) {
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setApartmentPhotos(prev => [...prev, reader.result as string])
+      }
+      reader.readAsDataURL(file)
+    }
   }
 
-  const filteredSuggestions = instInput.length > 0 ? NIGERIAN_INSTITUTIONS.filter(i => i.toLowerCase().includes(instInput.toLowerCase())).slice(0, 4) : []
-
-  const handleFinish = () => {
-    onNavigate('dashboard', { mode, institution, matricNumber, profilePhoto, profileImages, apartmentPhotos, apartmentTitle, apartmentPrice, apartmentLocation, apartmentDesc, budget, preferredArea, bio, socials, distanceToCampus, name: 'You' })
+  const removeApartmentPhoto = (index: number) => {
+    setApartmentPhotos(prev => prev.filter((_, i) => i !== index))
+    setApartmentPhotoFiles(prev => prev.filter((_, i) => i !== index))
   }
 
-  const instValid = institution && verificationMethod && ((verificationMethod === 'matric' && matricNumber) || (verificationMethod === 'id' && idPhoto))
+  const handleSubmit = async () => {
+    setLoading(true)
+    setError('')
 
-  const inputCls = "w-full px-4 py-3 bg-cream border border-border rounded-xl font-medium text-ink text-sm focus:outline-none focus:border-ink/30 transition-all"
-  const labelCls = "text-[10px] font-semibold text-ink uppercase tracking-wider mb-1.5 block"
+    try {
+      // Upload profile photo
+      let profilePhotoUrl = ''
+      if (profilePhotoFile) {
+        const uploadResult = await api.uploadImage(profilePhotoFile, `profile-${user.id}.jpg`)
+        profilePhotoUrl = uploadResult.url
+      }
+
+      // Upload apartment photos
+      const apartmentPhotoUrls: string[] = []
+      if (apartmentPhotoFiles.length > 0) {
+        for (let i = 0; i < apartmentPhotoFiles.length; i++) {
+          const uploadResult = await api.uploadImage(apartmentPhotoFiles[i], `apartment-${user.id}-${i}.jpg`)
+          apartmentPhotoUrls.push(uploadResult.url)
+        }
+      }
+
+      // Update user profile
+      const updatedUser = await api.updateUserProfile({
+        name,
+        institution,
+        matric_number: matricNumber,
+        profile_photo: profilePhotoUrl,
+        mode,
+        onboarding_complete: true,
+        socials: {
+          whatsapp,
+          instagram,
+          tiktok,
+          facebook,
+          twitter,
+          email
+        },
+        budget: mode === 'need' ? budget : undefined,
+        preferred_location: mode === 'need' ? preferredLocation : undefined,
+        distance_to_campus: mode === 'need' ? distanceToCampus : undefined
+      })
+
+      // Create listing if mode === 'have'
+      if (mode === 'have') {
+        await api.createListing({
+          title: apartmentTitle,
+          price: apartmentPrice,
+          location: apartmentLocation,
+          description: apartmentDescription,
+          photos: apartmentPhotoUrls
+        })
+      }
+
+      onComplete()
+    } catch (err: any) {
+      setError(err.message || 'Failed to complete onboarding')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const canProceed = () => {
+    switch (step) {
+      case 1: return name && institution && matricNumber
+      case 2: return profilePhoto !== null
+      case 3: return mode !== null
+      case 4: return mode === 'need' || (apartmentTitle && apartmentPrice && apartmentLocation && apartmentPhotos.length > 0)
+      case 5: return mode === 'have' || (budget && preferredLocation)
+      case 6: return email
+      default: return false
+    }
+  }
 
   return (
-    <div className="h-[100dvh] flex flex-col bg-cream overflow-hidden">
-      {/* Compact header */}
-      <header className="glass border-b border-border px-5 py-3 flex items-center justify-between shrink-0 z-50">
-        <button onClick={() => step === 0 ? onNavigate('landing') : back()} className="flex items-center gap-2">
-          {step > 0 ? <ArrowLeft size={18} className="text-ink" /> : <div className="w-8 h-8 rounded-[10px] bg-ink flex items-center justify-center"><Home className="w-3.5 h-3.5 text-cream" strokeWidth={2} /></div>}
-          {step === 0 && <span className="text-base font-display font-bold tracking-[-0.03em] text-ink">CoRenty</span>}
-        </button>
-        {step > 0 && <span className="text-[10px] font-semibold text-ink uppercase tracking-wider">{step}/{totalSteps}</span>}
-      </header>
-
-      {/* Progress */}
-      {step > 0 && (
-        <div className="px-5 pt-3 shrink-0">
-          <div className="flex items-center gap-1">
-            {Array.from({ length: totalSteps }).map((_, i) => (
-              <div key={i} className="flex-1 h-[3px] rounded-full bg-border overflow-hidden">
-                <motion.div className="h-full bg-ink rounded-full" initial={{ width: 0 }} animate={{ width: step > i ? '100%' : '0%' }} transition={{ duration: 0.3 }} />
-              </div>
-            ))}
+    <div className="min-h-screen bg-cream flex items-center justify-center p-4">
+      <div className="w-full max-w-md">
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium text-ink">Step {step} of 6</span>
+            <span className="text-sm text-ink-secondary">{Math.round((step / 6) * 100)}%</span>
+          </div>
+          <div className="h-2 bg-border rounded-full overflow-hidden">
+            <div 
+              className="h-full bg-brand transition-all duration-300" 
+              style={{ width: `${(step / 6) * 100}%` }}
+            />
           </div>
         </div>
-      )}
 
-      {/* Content — fills remaining space, no scroll */}
-      <div className="flex-1 flex items-center justify-center px-5 py-4 min-h-0 overflow-hidden">
-        <div className="w-full max-w-md">
-          <AnimatePresence mode="wait">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-800 text-sm">
+            {error}
+          </div>
+        )}
 
-            {/* Step 0: Mode */}
-            {step === 0 && (
-              <motion.div key="mode" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-2xl lg:text-3xl font-display font-bold tracking-tight mb-2 text-ink">How are you<br/><span className="font-serif italic">looking?</span></h2>
-                <p className="text-sm text-ink mb-6">Pick what fits your situation.</p>
-                <div className="space-y-3">
-                  <button onClick={() => { setMode('have'); setStep(1) }} className="w-full p-5 rounded-2xl border bg-surface border-border hover:border-ink/20 text-left transition-all active:scale-[0.98]">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-xl bg-cream flex items-center justify-center shrink-0"><Home className="w-5 h-5 text-ink" strokeWidth={1.5} /></div>
-                      <div>
-                        <h3 className="text-base font-display font-bold">I have a place</h3>
-                        <p className="text-xs text-ink mt-0.5">List your apartment and find a roommate.</p>
-                      </div>
-                    </div>
-                  </button>
-                  <button onClick={() => { setMode('need'); setStep(1) }} className="w-full p-5 rounded-2xl border bg-surface border-border hover:border-ink/20 text-left transition-all active:scale-[0.98]">
-                    <div className="flex items-center gap-3.5">
-                      <div className="w-11 h-11 rounded-xl bg-cream flex items-center justify-center shrink-0"><GraduationCap className="w-5 h-5 text-ink" strokeWidth={1.5} /></div>
-                      <div>
-                        <h3 className="text-base font-display font-bold">I need a place + roommate</h3>
-                        <p className="text-xs text-ink mt-0.5">Match with another student and search together.</p>
-                      </div>
-                    </div>
-                  </button>
+        <AnimatePresence mode="wait">
+          {step === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Personal Information</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Full Name</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="Enter your full name"
+                  />
                 </div>
-              </motion.div>
-            )}
 
-            {/* Step 1: Verify */}
-            {step === 1 && (
-              <motion.div key="verify" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">Verify you're a student</h2>
-                <p className="text-xs text-ink mb-4">This keeps CoRenty safe.</p>
-                <div className="space-y-3">
-                  <div className="relative">
-                    <label className={labelCls}>Your institution</label>
-                    <input type="text" value={instInput} onChange={e => { setInstInput(e.target.value); setInstitution(''); setShowSuggestions(true) }} onFocus={() => setShowSuggestions(true)} onBlur={() => setTimeout(() => { setShowSuggestions(false); if (instInput && !institution) setInstitution(instInput) }, 200)} placeholder="Type your school..." className={inputCls} />
-                    {showSuggestions && filteredSuggestions.length > 0 && !institution && (
-                      <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-xl shadow-xl overflow-hidden z-10 max-h-36 overflow-y-auto">
-                        {filteredSuggestions.map(s => (
-                          <button key={s} onMouseDown={() => { setInstitution(s); setInstInput(s); setShowSuggestions(false) }} className="w-full text-left px-4 py-2 hover:bg-cream text-ink text-xs font-medium transition-colors">{s}</button>
-                        ))}
-                      </div>
-                    )}
-                    {institution && <div className="flex items-center gap-1.5 mt-1.5 px-2.5 py-1.5 bg-ink/5 rounded-lg"><Check size={11} className="text-like" /><span className="text-xs font-medium text-ink truncate">{institution}</span><button onClick={() => { setInstitution(''); setInstInput('') }} className="ml-auto"><X size={10} className="text-ink" /></button></div>}
-                  </div>
-                  <div>
-                    <label className={labelCls}>Verify with</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button onClick={() => setVerificationMethod('matric')} className={`p-3 rounded-xl border text-left transition-all ${verificationMethod === 'matric' ? 'bg-ink border-ink text-cream' : 'bg-surface border-border'}`}>
-                        <p className="font-display font-bold text-xs">Matric number</p>
-                        <p className={`text-[10px] mt-0.5 ${verificationMethod === 'matric' ? 'text-cream/70' : 'text-ink'}`}>Quick & easy</p>
-                      </button>
-                      <button onClick={() => setVerificationMethod('id')} className={`p-3 rounded-xl border text-left transition-all ${verificationMethod === 'id' ? 'bg-ink border-ink text-cream' : 'bg-surface border-border'}`}>
-                        <p className="font-display font-bold text-xs">Student ID</p>
-                        <p className={`text-[10px] mt-0.5 ${verificationMethod === 'id' ? 'text-cream/70' : 'text-ink'}`}>Upload photo</p>
-                      </button>
-                    </div>
-                  </div>
-                  {verificationMethod === 'matric' && (
-                    <div><label className={labelCls}>Matric number</label><input type="text" value={matricNumber} onChange={e => setMatricNumber(e.target.value)} placeholder="e.g. 210401001" className={inputCls} /></div>
-                  )}
-                  {verificationMethod === 'id' && (
-                    <div>
-                      <label className={labelCls}>Student ID photo</label>
-                      <label className="flex items-center justify-center h-24 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-ink/30 transition-all bg-cream">
-                        {idPhoto ? <img src={idPhoto} alt="ID" className="h-full w-full object-cover rounded-xl" /> : <><Upload className="w-5 h-5 text-ink mr-2" strokeWidth={1.5} /><span className="text-xs font-medium text-ink">Tap to upload</span></>}
-                        <input type="file" accept="image/*" onChange={handlePhotoUpload(setIdPhoto)} className="hidden" />
-                      </label>
-                    </div>
-                  )}
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Institution</label>
+                  <input
+                    type="text"
+                    value={institution}
+                    onChange={(e) => setInstitution(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., University of Lagos"
+                  />
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={next} disabled={!instValid} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed">Continue <ArrowRight size={14} /></button>
-                </div>
-              </motion.div>
-            )}
 
-            {/* Step 2: Photos */}
-            {step === 2 && (
-              <motion.div key="photo" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">Add your photos</h2>
-                <p className="text-xs text-ink mb-4">Profile photo required. Add more to stand out.</p>
-                <div className="flex items-center gap-5 mb-4">
-                  <label className="relative cursor-pointer shrink-0">
-                    <div className="w-24 h-24 rounded-full bg-cream border-[3px] border-border overflow-hidden flex items-center justify-center">
-                      {profilePhoto ? <img src={profilePhoto} className="w-full h-full object-cover" /> : <Camera className="w-8 h-8 text-ink" strokeWidth={1.5} />}
-                    </div>
-                    <div className="absolute -bottom-0.5 right-0 w-7 h-7 rounded-full bg-ink flex items-center justify-center shadow-lg"><Upload className="w-3 h-3 text-cream" /></div>
-                    <input type="file" accept="image/*" onChange={handlePhotoUpload(setProfilePhoto)} className="hidden" />
-                  </label>
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-ink mb-1.5">More photos</p>
-                    <div className="grid grid-cols-4 gap-2">
-                      {profileImages.map((img, i) => (
-                        <div key={i} className="aspect-square rounded-lg overflow-hidden bg-cream border border-border relative group">
-                          <img src={img} className="w-full h-full object-cover" />
-                          <button onClick={() => setProfileImages(p => p.filter((_, idx) => idx !== i))} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-ink/70 flex items-center justify-center"><X size={8} className="text-cream" /></button>
-                        </div>
-                      ))}
-                      <label className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-ink/30 bg-cream">
-                        <Plus className="w-4 h-4 text-ink" /><input type="file" accept="image/*" multiple onChange={handleMultiple(setProfileImages)} className="hidden" />
-                      </label>
-                    </div>
-                  </div>
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Matric Number</label>
+                  <input
+                    type="text"
+                    value={matricNumber}
+                    onChange={(e) => setMatricNumber(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="Enter your matric number"
+                  />
                 </div>
-                <div className="flex gap-2 mt-auto">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={next} disabled={!profilePhoto} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed">Continue <ArrowRight size={14} /></button>
-                </div>
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
+          )}
 
-            {/* Step 3: Bio + Socials */}
-            {step === 3 && (
-              <motion.div key="bio" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">About <span className="font-serif italic">you</span></h2>
-                <p className="text-xs text-ink mb-3">Bio and socials help others know you.</p>
-                <div className="space-y-3">
-                  <div>
-                    <label className={labelCls}>Bio</label>
-                    <textarea value={bio} onChange={e => setBio(e.target.value)} placeholder="Hobbies, lifestyle, habits..." rows={2} maxLength={200} className={`${inputCls} resize-none`} />
-                    <p className="text-[10px] text-ink text-right">{bio.length}/200</p>
+          {step === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Profile Photo</h2>
+              
+              <div className="flex flex-col items-center">
+                {profilePhoto ? (
+                  <div className="mb-4">
+                    <img src={profilePhoto} alt="Profile" className="w-32 h-32 rounded-full object-cover border-4 border-brand" />
                   </div>
-                  <div>
-                    <label className={labelCls}>Social links</label>
-                    <div className="space-y-2">
-                      {([
-                        { key: 'instagram' as const, icon: <InstagramIcon size={14} />, ph: 'Instagram' },
-                        { key: 'tiktok' as const, icon: <TikTokIcon size={14} />, ph: 'TikTok' },
-                        { key: 'facebook' as const, icon: <FacebookIcon size={14} />, ph: 'Facebook' },
-                        { key: 'whatsapp' as const, icon: <WhatsAppIcon size={14} />, ph: 'WhatsApp' },
-                        { key: 'email' as const, icon: <Mail size={14} />, ph: 'Email' },
-                        { key: 'twitter' as const, icon: <XIcon size={14} />, ph: 'X / Twitter' },
-                      ]).map(({ key, icon, ph }) => (
-                        <div key={key} className="flex items-center gap-2.5 px-3 py-2 bg-cream border border-border rounded-xl focus-within:border-ink/30 transition-all">
-                          <span className="shrink-0">{icon}</span>
-                          <input type="text" value={socials[key]} onChange={e => setSocials(s => ({ ...s, [key]: e.target.value }))} placeholder={ph} className="flex-1 bg-transparent font-medium text-ink text-sm focus:outline-none placeholder:text-ink/30" />
-                          {socials[key] && <Check size={12} className="text-like shrink-0" />}
-                        </div>
-                      ))}
-                    </div>
+                ) : (
+                  <div className="w-32 h-32 rounded-full bg-border flex items-center justify-center mb-4">
+                    <span className="text-ink-tertiary text-sm">No photo</span>
                   </div>
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={next} disabled={!bio} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed">Continue <ArrowRight size={14} /></button>
-                </div>
-              </motion.div>
-            )}
+                )}
 
-            {/* Step 4: Have → Apartment / Need → Preferences */}
-            {step === 4 && mode === 'have' && (
-              <motion.div key="apt" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">Your place</h2>
-                <p className="text-xs text-ink mb-3">Details + photos. At least 1 photo required.</p>
-                <div className="space-y-2.5">
-                  <input type="text" value={apartmentTitle} onChange={e => setApartmentTitle(e.target.value)} placeholder="Listing title" className={inputCls} />
-                  <div className="grid grid-cols-2 gap-2">
-                    <input type="text" value={apartmentPrice} onChange={e => setApartmentPrice(e.target.value)} placeholder="Price (₦/yr)" className={inputCls} />
-                    <input type="text" value={apartmentLocation} onChange={e => setApartmentLocation(e.target.value)} placeholder="Location" className={inputCls} />
+                <label className="cursor-pointer">
+                  <span className="px-6 py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand/90 transition-colors">
+                    {profilePhoto ? 'Change Photo' : 'Upload Photo'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleProfilePhotoUpload}
+                    className="hidden"
+                  />
+                </label>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">What are you looking for?</h2>
+              
+              <div className="space-y-4">
+                <button
+                  onClick={() => setMode('have')}
+                  className={`w-full p-6 rounded-xl border-2 transition-all ${
+                    mode === 'have' 
+                      ? 'border-brand bg-brand/5' 
+                      : 'border-border hover:border-ink/20'
+                  }`}
+                >
+                  <div className="text-left">
+                    <h3 className="text-lg font-bold text-ink mb-2">I have an apartment</h3>
+                    <p className="text-sm text-ink-secondary">Looking for a roommate to share rent</p>
                   </div>
-                  <textarea value={apartmentDesc} onChange={e => setApartmentDesc(e.target.value)} placeholder="Description..." rows={2} className={`${inputCls} resize-none`} />
-                  <div className="grid grid-cols-5 gap-2">
-                    {apartmentPhotos.map((p, i) => (
-                      <div key={i} className="aspect-square rounded-lg overflow-hidden bg-cream border border-border relative group">
-                        <img src={p} className="w-full h-full object-cover" />
-                        <button onClick={() => setApartmentPhotos(prev => prev.filter((_, idx) => idx !== i))} className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-ink/70 flex items-center justify-center"><X size={8} className="text-cream" /></button>
+                </button>
+
+                <button
+                  onClick={() => setMode('need')}
+                  className={`w-full p-6 rounded-xl border-2 transition-all ${
+                    mode === 'need' 
+                      ? 'border-brand bg-brand/5' 
+                      : 'border-border hover:border-ink/20'
+                  }`}
+                >
+                  <div className="text-left">
+                    <h3 className="text-lg font-bold text-ink mb-2">I need an apartment</h3>
+                    <p className="text-sm text-ink-secondary">Looking for someone with an apartment</p>
+                  </div>
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 4 && mode === 'have' && (
+            <motion.div
+              key="step4-have"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm max-h-[70vh] overflow-y-auto"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Apartment Details</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Title</label>
+                  <input
+                    type="text"
+                    value={apartmentTitle}
+                    onChange={(e) => setApartmentTitle(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., Modern 2BR near UNILAG"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Price (₦/year)</label>
+                  <input
+                    type="text"
+                    value={apartmentPrice}
+                    onChange={(e) => setApartmentPrice(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., 500000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Location</label>
+                  <input
+                    type="text"
+                    value={apartmentLocation}
+                    onChange={(e) => setApartmentLocation(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., Akoka, Yaba"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Description</label>
+                  <textarea
+                    value={apartmentDescription}
+                    onChange={(e) => setApartmentDescription(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand resize-none"
+                    rows={3}
+                    placeholder="Describe your apartment..."
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Photos</label>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
+                    {apartmentPhotos.map((photo, i) => (
+                      <div key={i} className="relative aspect-square rounded-lg overflow-hidden">
+                        <img src={photo} alt={`Apartment ${i + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          onClick={() => removeApartmentPhoto(i)}
+                          className="absolute top-1 right-1 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center text-xs hover:bg-red-600"
+                        >
+                          ×
+                        </button>
                       </div>
                     ))}
-                    <label className="aspect-square rounded-lg border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:border-ink/30 bg-cream">
-                      <Upload className="w-4 h-4 text-ink" strokeWidth={1.5} /><span className="text-[9px] font-medium text-ink">Add</span>
-                      <input type="file" accept="image/*" multiple onChange={handleMultiple(setApartmentPhotos)} className="hidden" />
-                    </label>
                   </div>
-                  <div className="bg-surface border border-border rounded-xl p-3">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-medium text-ink">Distance to campus</span>
-                      <span className="text-base font-display font-bold text-brand">{distanceToCampus} km</span>
-                    </div>
-                    <input type="range" min={0.5} max={10} step={0.5} value={distanceToCampus} onChange={e => setDistanceToCampus(parseFloat(e.target.value))} className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #e85d04 0%, #e85d04 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 100%)` }} />
-                    <p className="text-[10px] text-ink mt-1">{distanceToCampus <= 1 ? '🚶 Right on campus!' : distanceToCampus <= 3 ? '🚶 Easy walk' : distanceToCampus <= 5 ? '🚌 Short commute' : '🚗 Longer commute'}</p>
-                  </div>
+                  <label className="cursor-pointer">
+                    <span className="px-4 py-2 bg-brand text-white rounded-lg text-sm font-medium hover:bg-brand/90 transition-colors inline-block">
+                      Add Photos
+                    </span>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      onChange={handleApartmentPhotoUpload}
+                      className="hidden"
+                    />
+                  </label>
                 </div>
-                <div className="flex gap-2 mt-3">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={next} disabled={!apartmentTitle || !apartmentPrice || !apartmentLocation || apartmentPhotos.length === 0} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed">Continue <ArrowRight size={14} /></button>
-                </div>
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
+          )}
 
-            {step === 4 && mode === 'need' && (
-              <motion.div key="prefs" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">What are you looking for?</h2>
-                <p className="text-xs text-ink mb-4">This helps us match you.</p>
-                <div className="space-y-3">
-                  <div><label className={labelCls}>Budget (₦/yr)</label><input type="text" value={budget} onChange={e => setBudget(e.target.value)} placeholder="e.g. 200,000" className={inputCls} /></div>
-                  <div><label className={labelCls}>Preferred area</label><input type="text" value={preferredArea} onChange={e => setPreferredArea(e.target.value)} placeholder="e.g. Akoka, Yaba" className={inputCls} /></div>
-                  <div className="bg-surface border border-border rounded-xl p-3">
-                    <div className="flex justify-between items-center mb-1.5">
-                      <span className="text-xs font-medium text-ink">Max distance to campus</span>
-                      <span className="text-base font-display font-bold text-brand">{distanceToCampus} km</span>
-                    </div>
-                    <input type="range" min={0.5} max={10} step={0.5} value={distanceToCampus} onChange={e => setDistanceToCampus(parseFloat(e.target.value))} className="w-full h-1.5 rounded-full appearance-none cursor-pointer" style={{ background: `linear-gradient(to right, #e85d04 0%, #e85d04 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 ${((distanceToCampus - 0.5) / 9.5) * 100}%, #e7e5e4 100%)` }} />
-                    <p className="text-[10px] text-ink mt-1">{distanceToCampus <= 1 ? '🚶 Right on campus!' : distanceToCampus <= 3 ? '🚶 Easy walk' : distanceToCampus <= 5 ? '🚌 Short commute' : '🚗 Longer commute'}</p>
+          {step === 4 && mode === 'need' && (
+            <motion.div
+              key="step4-need"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Your Preferences</h2>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Budget (₦/year)</label>
+                  <input
+                    type="text"
+                    value={budget}
+                    onChange={(e) => setBudget(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., 300000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Preferred Location</label>
+                  <input
+                    type="text"
+                    value={preferredLocation}
+                    onChange={(e) => setPreferredLocation(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="e.g., Yaba, Surulere"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">
+                    Max Distance to Campus: {distanceToCampus} km
+                  </label>
+                  <input
+                    type="range"
+                    min="0.5"
+                    max="10"
+                    step="0.5"
+                    value={distanceToCampus}
+                    onChange={(e) => setDistanceToCampus(parseFloat(e.target.value))}
+                    className="w-full"
+                  />
+                  <div className="flex justify-between text-xs text-ink-tertiary mt-1">
+                    <span>0.5 km</span>
+                    <span>10 km</span>
                   </div>
                 </div>
-                <div className="flex gap-2 mt-4">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={next} disabled={!budget} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5 disabled:bg-border disabled:text-ink disabled:cursor-not-allowed">Continue <ArrowRight size={14} /></button>
-                </div>
-              </motion.div>
-            )}
+              </div>
+            </motion.div>
+          )}
 
-            {/* Step 5: Review */}
-            {step === 5 && (
-              <motion.div key="review" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -16 }} transition={{ duration: 0.25 }}>
-                <h2 className="text-xl font-display font-bold tracking-tight mb-1 text-ink">All set!</h2>
-                <p className="text-xs text-ink mb-4">Review your info.</p>
-                <div className="space-y-2.5 mb-4">
-                  <div className="flex items-center gap-3 p-3 bg-surface border border-border rounded-xl">
-                    {profilePhoto && <img src={profilePhoto} className="w-10 h-10 rounded-full object-cover" />}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-display font-bold text-sm text-ink truncate">{institution}</p>
-                      <p className="text-[10px] text-ink">{mode === 'have' ? 'Has a place' : 'Needs a place + roommate'}</p>
-                    </div>
-                    {profileImages.length > 0 && <span className="text-[10px] text-ink shrink-0">+{profileImages.length} photos</span>}
+          {step === 5 && mode === 'have' && (
+            <motion.div
+              key="step5-have"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Social Links</h2>
+              <p className="text-sm text-ink-secondary mb-4">Add your social media so potential roommates can contact you</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="your@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="+234 800 000 0000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Instagram</label>
+                  <input
+                    type="text"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="@username"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">TikTok (Optional)</label>
+                  <input
+                    type="text"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="@username"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Facebook (Optional)</label>
+                  <input
+                    type="text"
+                    value={facebook}
+                    onChange={(e) => setFacebook(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="Facebook profile URL"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Twitter/X (Optional)</label>
+                  <input
+                    type="text"
+                    value={twitter}
+                    onChange={(e) => setTwitter(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 5 && mode === 'need' && (
+            <motion.div
+              key="step5-need"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Social Links</h2>
+              <p className="text-sm text-ink-secondary mb-4">Add your social media so apartment owners can contact you</p>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Email</label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="your@email.com"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">WhatsApp</label>
+                  <input
+                    type="text"
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="+234 800 000 0000"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-ink mb-2">Instagram</label>
+                  <input
+                    type="text"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    className="w-full px-4 py-3 bg-cream border border-border rounded-xl text-ink placeholder:text-ink-tertiary focus:outline-none focus:border-brand"
+                    placeholder="@username"
+                  />
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 6 && (
+            <motion.div
+              key="step6"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="bg-surface rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-2xl font-display font-bold text-ink mb-6">Review & Submit</h2>
+              
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-ink-secondary">Name:</span>
+                  <span className="text-ink font-medium">{name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-secondary">Institution:</span>
+                  <span className="text-ink font-medium">{institution}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-ink-secondary">Mode:</span>
+                  <span className="text-ink font-medium capitalize">{mode}</span>
+                </div>
+                {mode === 'have' && (
+                  <div className="flex justify-between">
+                    <span className="text-ink-secondary">Apartment:</span>
+                    <span className="text-ink font-medium">{apartmentTitle}</span>
                   </div>
-                  {bio && <p className="text-xs text-ink bg-surface border border-border rounded-xl p-3">{bio}</p>}
-                  {Object.values(socials).some(v => v) && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {Object.entries(socials).filter(([_, v]) => v).map(([key]) => (
-                        <span key={key} className="px-2 py-1 bg-cream rounded-lg text-[10px] font-medium text-ink capitalize">{key}</span>
-                      ))}
+                )}
+                {mode === 'need' && (
+                  <>
+                    <div className="flex justify-between">
+                      <span className="text-ink-secondary">Budget:</span>
+                      <span className="text-ink font-medium">₦{budget}/year</span>
                     </div>
-                  )}
-                  {mode === 'have' && (
-                    <div className="p-3 bg-surface border border-border rounded-xl">
-                      <p className="font-display font-bold text-sm text-ink">{apartmentTitle}</p>
-                      <p className="text-[10px] text-ink">₦{apartmentPrice}/yr · {apartmentLocation} · {apartmentPhotos.length} photos · {distanceToCampus}km</p>
+                    <div className="flex justify-between">
+                      <span className="text-ink-secondary">Location:</span>
+                      <span className="text-ink font-medium">{preferredLocation}</span>
                     </div>
-                  )}
-                  {mode === 'need' && (
-                    <div className="p-3 bg-surface border border-border rounded-xl">
-                      <p className="text-xs text-ink">Budget: ₦{budget}/yr · {preferredArea || 'Flexible'} · {distanceToCampus}km max</p>
-                    </div>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={back} className="flex-1 py-3 bg-cream rounded-xl font-semibold text-ink text-sm flex items-center justify-center gap-1.5"><ArrowLeft size={14} /> Back</button>
-                  <button onClick={handleFinish} className="flex-[2] py-3 bg-ink text-cream rounded-xl font-semibold text-sm flex items-center justify-center gap-1.5"><Check size={14} /> Start swiping</button>
-                </div>
-              </motion.div>
-            )}
+                  </>
+                )}
+              </div>
 
-          </AnimatePresence>
+              <div className="mt-6 p-4 bg-brand/5 border border-brand/20 rounded-xl">
+                <p className="text-sm text-ink">
+                  <strong>Next step:</strong> After completing onboarding, you'll be able to browse listings and match with potential roommates. To view contact details, you'll need an active subscription (₦6,500/month).
+                </p>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex gap-3 mt-6">
+          {step > 1 && (
+            <button
+              onClick={prevStep}
+              disabled={loading}
+              className="flex-1 py-3 bg-cream text-ink rounded-xl font-semibold hover:bg-cream/80 transition-colors disabled:opacity-50"
+            >
+              <ArrowLeft className="w-5 h-5 inline mr-2" />
+              Back
+            </button>
+          )}
+          
+          {step < 6 ? (
+            <button
+              onClick={nextStep}
+              disabled={!canProceed()}
+              className="flex-1 py-3 bg-ink text-cream rounded-xl font-semibold hover:bg-ink/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Next
+              <ArrowRight className="w-5 h-5 inline ml-2" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="flex-1 py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50"
+            >
+              {loading ? 'Saving...' : 'Complete Setup'}
+              <Check className="w-5 h-5 inline ml-2" />
+            </button>
+          )}
         </div>
       </div>
     </div>

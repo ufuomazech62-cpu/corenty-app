@@ -38,7 +38,7 @@ const SignIn: React.FC<SignInProps> = ({ onNavigate }) => {
         </p>
 
         <button
-          onClick={() => onNavigate('onboarding')}
+          onClick={() => window.location.href = '/api/auth/google'}
           className="w-full flex items-center justify-center gap-3 px-6 py-4 bg-surface border border-border rounded-2xl font-medium text-ink hover:border-ink/20 hover:bg-surface/80 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
@@ -59,3 +59,5 @@ const SignIn: React.FC<SignInProps> = ({ onNavigate }) => {
 }
 
 export default SignIn
+/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-9c21cad8d835.sh: No such file or directory
+/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-9c21cad8d835.txt: No such file or directory

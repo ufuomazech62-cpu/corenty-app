@@ -8,18 +8,42 @@ import SignIn from './components/SignIn'
 import Onboarding from './components/Onboarding'
 import Dashboard from './components/Dashboard'
 import { AnimatePresence } from 'motion/react'
+import { api } from './lib/api'
 
 function App() {
   const [page, setPage] = useState('landing')
   const [user, setUser] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const hasCompletedOnboarding = localStorage.getItem('corenty_onboarding_complete')
-    if (hasCompletedOnboarding === 'true') {
-      const savedUser = localStorage.getItem('corenty_user')
-      if (savedUser) setUser(JSON.parse(savedUser))
-    }
+    checkAuth()
   }, [])
+
+  async function checkAuth() {
+    try {
+      const currentUser = await api.getCurrentUser()
+      setUser(currentUser)
+      
+      // Check if user has completed onboarding
+      if (currentUser.onboarding_complete) {
+        setPage('dashboard')
+      } else {
+        setPage('onboarding')
+      }
+    } catch (error) {
+      // Not authenticated, check if there's a pending OAuth callback
+      const urlParams = new URLSearchParams(window.location.search)
+      const code = urlParams.get('code')
+      if (code) {
+        // Handle OAuth callback
+        setPage('auth-callback')
+      } else {
+        setPage('landing')
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
 
   // Lock body scroll for app screens, allow scroll for landing/signin
   useEffect(() => {
@@ -36,18 +60,12 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'instant' })
 
     if (p === 'signin') {
-      const hasCompletedOnboarding = localStorage.getItem('corenty_onboarding_complete')
-      if (hasCompletedOnboarding === 'true') {
-        const savedUser = localStorage.getItem('corenty_user')
-        if (savedUser) setUser(JSON.parse(savedUser))
-        setPage('dashboard')
-        return
-      }
+      // Redirect to Google OAuth
+      window.location.href = '/api/auth/google'
+      return
     }
 
     if (p === 'dashboard' && data) {
-      localStorage.setItem('corenty_onboarding_complete', 'true')
-      localStorage.setItem('corenty_user', JSON.stringify(data))
       setUser(data)
     }
 
@@ -56,6 +74,23 @@ function App() {
     }
 
     setPage(p)
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <div className="text-ink text-lg font-display">Loading...</div>
+      </div>
+    )
+  }
+
+  // Handle OAuth callback
+  if (page === 'auth-callback') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-cream">
+        <div className="text-ink text-lg font-display">Completing sign in...</div>
+      </div>
+    )
   }
 
   return (
@@ -73,7 +108,7 @@ function App() {
           </>
         )}
         {page === 'signin' && <SignIn onNavigate={navigate} />}
-        {page === 'onboarding' && <Onboarding onNavigate={navigate} />}
+        {page === 'onboarding' && <Onboarding user={user} onNavigate={navigate} onComplete={checkAuth} />}
         {page === 'dashboard' && <Dashboard onNavigate={navigate} user={user} />}
       </AnimatePresence>
     </div>
@@ -81,4 +116,3 @@ function App() {
 }
 
 export default App
-// Force redeployment Thu May 28 20:37:40 WEDT 2026
