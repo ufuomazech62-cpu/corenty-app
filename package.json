@@ -14,7 +14,7 @@
     "@vercel/node": "^5.8.7",
     "bcryptjs": "^3.0.3",
     "clsx": "^2.1.1",
-    "jose": "^6.2.3",
+    "jose": "^5.9.6",
     "lucide-react": "^0.555.0",
     "motion": "^12.39.0",
     "react": "^19.2.0",
