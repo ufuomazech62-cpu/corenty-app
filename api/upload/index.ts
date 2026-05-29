@@ -1,35 +1,50 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { put } from '@vercel/blob';
-import { getUserFromRequest } from '../_lib/jwt';
+import crypto from 'crypto';
+
+// === Inlined JWT ===
+const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
+async function verifyToken(token: string): Promise<{ userId: number } | null> {
+  try {
+    const [header, payload, signature] = token.split('.');
+    if (!header || !payload || !signature) return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${payload}`).digest('base64url');
+    if (signature !== expected) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    return { userId: data.userId };
+  } catch { return null; }
+}
+async function getUserFromRequest(req: any): Promise<number | null> {
+  let token: string | null = null;
+  if (req.headers.authorization?.startsWith('Bearer ')) {
+    token = req.headers.authorization.substring(7);
+  } else {
+    const m = (req.headers.cookie || '').match(/auth_token=([^;]+)/);
+    if (m) token = m[1];
+  }
+  if (!token) return null;
+  const p = await verifyToken(token);
+  return p?.userId ?? null;
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
-  }
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
     const userId = await getUserFromRequest(req);
-    if (!userId) {
-      return res.status(401).json({ error: 'Unauthorized' });
-    }
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
     const { filename } = req.query;
-    if (!filename || typeof filename !== 'string') {
-      return res.status(400).json({ error: 'Missing filename' });
-    }
+    if (!filename || typeof filename !== 'string') return res.status(400).json({ error: 'Missing filename' });
 
-    // Get file from request body
     const chunks: Buffer[] = [];
     for await (const chunk of req) {
       chunks.push(chunk);
     }
     const buffer = Buffer.concat(chunks);
 
-    // Upload to Vercel Blob
-    const blob = await put(filename, buffer, {
-      access: 'public'
-    });
-
+    const blob = await put(filename, buffer, { access: 'public' });
     return res.status(200).json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
