@@ -16,7 +16,7 @@ class ApiClient {
 
     if (!response.ok) {
       const error = await response.json().catch(() => ({ error: 'Request failed' }))
-      throw new Error(error.error || `HTTP ${response.status}`)
+      throw new Error(error.error || error.details || `HTTP ${response.status}`)
     }
 
     return response.json()
@@ -94,19 +94,21 @@ class ApiClient {
     })
   }
 
-  // Upload
+  // Upload — send raw file bytes (NOT FormData)
   async uploadImage(file: File, filename?: string): Promise<{ url: string }> {
-    const formData = new FormData()
-    formData.append('file', file)
-    
-    const response = await fetch(`/api/upload?filename=${filename || file.name}`, {
+    const fname = filename || file.name
+    const response = await fetch(`/api/upload?filename=${encodeURIComponent(fname)}`, {
       method: 'POST',
-      body: formData,
+      body: file,
       credentials: 'include',
+      headers: {
+        'Content-Type': file.type || 'image/jpeg',
+      },
     })
 
     if (!response.ok) {
-      throw new Error('Upload failed')
+      const error = await response.json().catch(() => ({ error: 'Upload failed' }))
+      throw new Error(error.error || 'Upload failed')
     }
 
     return response.json()
@@ -121,17 +123,17 @@ export interface User {
   email: string
   name: string
   profile_photo: string | null
+  profile_photos?: string[]
   institution: string | null
   matric_number: string | null
   verified: boolean
-  mode: 'have' | 'need' | null
+  mode: 'have' | 'need' | 'together' | null
   onboarding_complete: boolean
   bio: string | null
   socials: Record<string, string>
   distance_to_campus: number
   budget: string | null
   preferred_location: string | null
-  preferred_area?: string | null
   preferred_area?: string | null
   subscription_status: 'active' | 'inactive' | 'cancelled'
   subscription_expires_at: string | null
@@ -140,7 +142,7 @@ export interface User {
 export interface Listing {
   id: number
   user_id: number
-  mode: 'have' | 'need'
+  mode: 'have' | 'need' | 'together'
   title: string | null
   price: string | null
   location: string | null
@@ -152,6 +154,10 @@ export interface Listing {
   apartment_description: string | null
   apartment_photos: string[]
   distance_to_campus: number | null
+  u_name?: string
+  u_photo?: string | null
+  institution?: string
+  verified?: boolean
   created_at: string
   updated_at: string
 }

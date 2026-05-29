@@ -28,6 +28,12 @@ async function getUserFromRequest(req: any): Promise<number | null> {
   return p?.userId ?? null;
 }
 
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -38,16 +44,36 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const { filename } = req.query;
     if (!filename || typeof filename !== 'string') return res.status(400).json({ error: 'Missing filename' });
 
+    // Read raw request body (file bytes sent directly)
     const chunks: Buffer[] = [];
-    for await (const chunk of req) {
-      chunks.push(chunk);
+    for await (const chunk of req as any) {
+      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
     }
     const buffer = Buffer.concat(chunks);
 
-    const blob = await put(filename, buffer, { access: 'public' });
+    if (buffer.length === 0) return res.status(400).json({ error: 'Empty file' });
+
+    // Detect content type from header or file extension
+    const contentType = req.headers['content-type'] || detectContentType(filename);
+
+    // Upload to Vercel Blob
+    const blob = await put(filename, buffer, {
+      access: 'public',
+      contentType,
+    });
+
     return res.status(200).json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Failed to upload file' });
+    return res.status(500).json({ error: 'Failed to upload file', details: error instanceof Error ? error.message : String(error) });
   }
+}
+
+function detectContentType(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop();
+  const types: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
+  };
+  return types[ext || ''] || 'application/octet-stream';
 }

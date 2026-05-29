@@ -8,7 +8,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // Simple auth check - require a secret token
   const { secret } = req.body;
   if (secret !== process.env.SETUP_SECRET) {
     return res.status(401).json({ error: 'Unauthorized' });
@@ -17,7 +16,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
     console.log('Setting up database schema...');
 
-    // Users table
     await sql`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -25,6 +23,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         email VARCHAR(255) UNIQUE NOT NULL,
         name VARCHAR(255) NOT NULL,
         profile_photo TEXT,
+        profile_photos TEXT[] DEFAULT ARRAY[]::TEXT[],
         institution VARCHAR(255),
         matric_number VARCHAR(100),
         verified BOOLEAN DEFAULT FALSE,
@@ -44,7 +43,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
-    // Listings table
     await sql`
       CREATE TABLE IF NOT EXISTS listings (
         id SERIAL PRIMARY KEY,
@@ -66,7 +64,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
-    // Matches table
     await sql`
       CREATE TABLE IF NOT EXISTS matches (
         id SERIAL PRIMARY KEY,
@@ -78,7 +75,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       )
     `;
 
-    // Subscriptions table
     await sql`
       CREATE TABLE IF NOT EXISTS subscriptions (
         id SERIAL PRIMARY KEY,
@@ -92,6 +88,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       )
     `;
+
+    // Migrations
+    try { await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS profile_photos TEXT[] DEFAULT ARRAY[]::TEXT[]`; } catch (e) {}
+    try { await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS bio TEXT`; } catch (e) {}
+    try { await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS onboarding_complete BOOLEAN DEFAULT FALSE`; } catch (e) {}
 
     // Indexes
     await sql`CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id)`;

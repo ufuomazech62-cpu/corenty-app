@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const sql = neon(process.env.DATABASE_URL!);
 
     const users = await sql`
-      SELECT id, email, name, profile_photo, institution, matric_number, verified,
+      SELECT id, email, name, profile_photo, profile_photos, institution, matric_number, verified,
              mode, onboarding_complete, bio, socials, distance_to_campus, budget,
              preferred_area as preferred_location, subscription_status, subscription_expires_at
       FROM users
