@@ -15,6 +15,7 @@ import {
   ChevronRight,
   AlertCircle,
   Camera,
+  Phone,
 } from 'lucide-react'
 import { TikTokIcon, InstagramIcon, FacebookIcon, XIcon, WhatsAppIcon } from './BrandIcons'
 import { api } from '../lib/api'
@@ -35,17 +36,21 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   const [error, setError] = useState('')
   const [direction, setDirection] = useState(1)
 
+  // Step 1
   const [name, setName] = useState(user?.name || '')
   const [institution, setInstitution] = useState('')
   const [matricNumber, setMatricNumber] = useState('')
-  const [bio, setBio] = useState('')
+  const [whatsapp, setWhatsapp] = useState('')
 
+  // Step 2
   const [profilePhotos, setProfilePhotos] = useState<string[]>([])
   const [profilePhotoFiles, setProfilePhotoFiles] = useState<File[]>([])
   const profileInputRef = useRef<HTMLInputElement>(null)
 
+  // Step 3
   const [mode, setMode] = useState<Mode | null>(null)
 
+  // Step 4 — mode-specific
   const [apartmentTitle, setApartmentTitle] = useState('')
   const [apartmentPrice, setApartmentPrice] = useState('')
   const [apartmentLocation, setApartmentLocation] = useState('')
@@ -53,28 +58,38 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   const [apartmentPhotos, setApartmentPhotos] = useState<string[]>([])
   const [apartmentPhotoFiles, setApartmentPhotoFiles] = useState<File[]>([])
   const apartmentInputRef = useRef<HTMLInputElement>(null)
-
   const [budget, setBudget] = useState('')
   const [preferredLocation, setPreferredLocation] = useState('')
   const [distanceToCampus, setDistanceToCampus] = useState(2)
   const [lookingFor, setLookingFor] = useState('')
-
   const [budgetMin, setBudgetMin] = useState('')
   const [budgetMax, setBudgetMax] = useState('')
   const [preferredAreas, setPreferredAreas] = useState('')
   const [bringToTable, setBringToTable] = useState('')
+  const [bio, setBio] = useState('')
 
+  // Step 5 — socials (toggled)
   const [email, setEmail] = useState(user?.email || '')
-  const [whatsapp, setWhatsapp] = useState('')
+  const [socialToggles, setSocialToggles] = useState({
+    instagram: false,
+    tiktok: false,
+    facebook: false,
+    twitter: false,
+  })
   const [instagram, setInstagram] = useState('')
   const [tiktok, setTiktok] = useState('')
   const [facebook, setFacebook] = useState('')
   const [twitter, setTwitter] = useState('')
 
+  // Step 6
   const [previewCarouselIndex, setPreviewCarouselIndex] = useState(0)
 
   const nextStep = () => { setDirection(1); setStep((s) => Math.min(s + 1, TOTAL_STEPS)) }
   const prevStep = () => { setDirection(-1); setStep((s) => Math.max(s - 1, 1)) }
+
+  const toggleSocial = (key: keyof typeof socialToggles) => {
+    setSocialToggles((prev) => ({ ...prev, [key]: !prev[key] }))
+  }
 
   const handleProfilePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -113,7 +128,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 
   const canProceed = (): boolean => {
     switch (step) {
-      case 1: return !!(name.trim() && institution.trim() && matricNumber.trim())
+      case 1: return !!(name.trim() && institution.trim() && matricNumber.trim() && whatsapp.trim())
       case 2: return profilePhotos.length >= 1
       case 3: return mode !== null
       case 4:
@@ -145,6 +160,12 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         }
       }
 
+      const socials: Record<string, string> = { email: email.trim(), whatsapp: whatsapp.trim() }
+      if (socialToggles.instagram && instagram.trim()) socials.instagram = instagram.trim()
+      if (socialToggles.tiktok && tiktok.trim()) socials.tiktok = tiktok.trim()
+      if (socialToggles.facebook && facebook.trim()) socials.facebook = facebook.trim()
+      if (socialToggles.twitter && twitter.trim()) socials.twitter = twitter.trim()
+
       const profileData: Record<string, any> = {
         name: name.trim(),
         institution: institution.trim(),
@@ -154,7 +175,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         profile_photos: profilePhotoUrls,
         mode,
         onboarding_complete: true,
-        socials: { email: email.trim(), whatsapp: whatsapp.trim(), instagram: instagram.trim(), tiktok: tiktok.trim(), facebook: facebook.trim(), twitter: twitter.trim() },
+        socials,
       }
 
       if (mode === 'need' || mode === 'together') {
@@ -198,9 +219,16 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
     exit: (d: number) => ({ x: d > 0 ? -60 : 60, opacity: 0 }),
   }
 
+  const socialPlatforms = [
+    { key: 'instagram' as const, icon: <InstagramIcon className="w-4 h-4" />, label: 'Instagram', val: instagram, set: setInstagram, ph: '@handle' },
+    { key: 'tiktok' as const, icon: <TikTokIcon className="w-4 h-4" />, label: 'TikTok', val: tiktok, set: setTiktok, ph: '@handle' },
+    { key: 'facebook' as const, icon: <FacebookIcon className="w-4 h-4" />, label: 'Facebook', val: facebook, set: setFacebook, ph: 'Profile URL or name' },
+    { key: 'twitter' as const, icon: <XIcon className="w-4 h-4" />, label: 'X (Twitter)', val: twitter, set: setTwitter, ph: '@handle' },
+  ]
+
   return (
     <div className="h-[100dvh] flex flex-col bg-cream">
-      {/* ── Fixed Header ── */}
+      {/* Fixed Header */}
       <div className="flex-shrink-0 px-5 pt-5 pb-3">
         <div className="max-w-sm mx-auto">
           <div className="flex items-center justify-between mb-2.5">
@@ -213,7 +241,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         </div>
       </div>
 
-      {/* ── Scrollable Content ── */}
+      {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto px-5">
         <div className="max-w-sm mx-auto py-2">
           <AnimatePresence mode="wait" custom={direction}>
@@ -222,7 +250,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {step === 1 && (
               <motion.div key="s1" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
                 <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">About you</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Let's get the basics down</p>
+                <p className="text-[14px] text-ink-tertiary mb-6">The basics — we'll keep it quick</p>
 
                 <div className="space-y-4">
                   <div>
@@ -237,6 +265,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                     <label className={label}>Matric number</label>
                     <input value={matricNumber} onChange={(e) => setMatricNumber(e.target.value)} placeholder="Your student ID" className={input} />
                   </div>
+                  <div>
+                    <label className={label}>WhatsApp number <span className="text-brand">*</span></label>
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center flex-shrink-0">
+                        <WhatsAppIcon className="w-4 h-4" />
+                      </div>
+                      <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="080..." className={`${input} flex-1`} />
+                    </div>
+                  </div>
                 </div>
               </motion.div>
             )}
@@ -245,7 +282,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {step === 2 && (
               <motion.div key="s2" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
                 <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Your photos</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Add at least 1 photo (up to 5)</p>
+                <p className="text-[14px] text-ink-tertiary mb-6">Add at least 1 — first one is your main photo</p>
 
                 <div className="grid grid-cols-3 gap-3">
                   {profilePhotos.map((photo, i) => (
@@ -271,14 +308,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {/* STEP 3: Mode */}
             {step === 3 && (
               <motion.div key="s3" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What are you doing?</h1>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What are you here for?</h1>
                 <p className="text-[14px] text-ink-tertiary mb-6">Pick one</p>
 
                 <div className="space-y-3">
                   {([
-                    { id: 'have' as Mode, icon: Home, title: 'I have an apartment', desc: 'List your place for roommates' },
-                    { id: 'need' as Mode, icon: Search, title: 'I need an apartment', desc: 'Find a place to move into' },
-                    { id: 'together' as Mode, icon: Users, title: 'Let\'s search together', desc: 'Find a roommate to apartment hunt' },
+                    { id: 'have' as Mode, icon: Home, title: 'I have a place', desc: 'List your apartment for roommates' },
+                    { id: 'need' as Mode, icon: Search, title: 'I need a place', desc: 'Browse apartments to move into' },
+                    { id: 'together' as Mode, icon: Users, title: 'Let\'s search together', desc: 'Find a roommate and apartment hunt' },
                   ]).map((opt) => (
                     <button
                       key={opt.id}
@@ -306,7 +343,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                 {mode === 'have' && (
                   <>
                     <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Your apartment</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">Tell others about the place</p>
+                    <p className="text-[14px] text-ink-tertiary mb-6">Help others find your place</p>
 
                     <div className="space-y-4">
                       <div>
@@ -322,11 +359,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         <input value={apartmentLocation} onChange={(e) => setApartmentLocation(e.target.value)} placeholder="e.g. Akoka, Yaba" className={input} />
                       </div>
                       <div>
-                        <label className={label}>Description</label>
-                        <textarea value={apartmentDescription} onChange={(e) => setApartmentDescription(e.target.value)} placeholder="What makes it great?" rows={2} className={`${input} resize-none`} />
-                      </div>
-                      <div>
-                        <label className={label}>Apartment photos</label>
+                        <label className={label}>Photos</label>
                         <div className="grid grid-cols-4 gap-2">
                           {apartmentPhotos.map((p, i) => (
                             <div key={i} className="relative aspect-square rounded-xl overflow-hidden">
@@ -344,14 +377,18 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         </div>
                         <input ref={apartmentInputRef} type="file" accept="image/*" multiple className="hidden" onChange={handleApartmentPhotoAdd} />
                       </div>
+                      <div>
+                        <label className={label}>Description</label>
+                        <textarea value={apartmentDescription} onChange={(e) => setApartmentDescription(e.target.value)} placeholder="What's great about the place?" rows={2} className={`${input} resize-none`} />
+                      </div>
                     </div>
                   </>
                 )}
 
                 {mode === 'need' && (
                   <>
-                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What you need</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">Your apartment preferences</p>
+                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What you're looking for</h1>
+                    <p className="text-[14px] text-ink-tertiary mb-6">Your ideal apartment</p>
 
                     <div className="space-y-4">
                       <div>
@@ -363,15 +400,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         <input value={preferredLocation} onChange={(e) => setPreferredLocation(e.target.value)} placeholder="e.g. Yaba, Surulere" className={input} />
                       </div>
                       <div>
-                        <label className={label}>Distance to campus</label>
+                        <label className={label}>Max distance to campus</label>
                         <div className="flex items-center gap-3">
                           <input type="range" min={0.5} max={10} step={0.5} value={distanceToCampus} onChange={(e) => setDistanceToCampus(parseFloat(e.target.value))} className="flex-1 accent-brand" />
                           <span className="text-[14px] font-semibold text-ink w-12 text-right">{distanceToCampus}km</span>
                         </div>
                       </div>
                       <div>
-                        <label className={label}>What are you looking for?</label>
-                        <textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="e.g. Shared room near campus, quiet area" rows={2} className={`${input} resize-none`} />
+                        <label className={label}>Anything specific?</label>
+                        <textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="e.g. Shared room, quiet area" rows={2} className={`${input} resize-none`} />
                       </div>
                     </div>
                   </>
@@ -380,7 +417,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                 {mode === 'together' && (
                   <>
                     <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Search together</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">What works for you?</p>
+                    <p className="text-[14px] text-ink-tertiary mb-6">What works for you</p>
 
                     <div className="space-y-4">
                       <div>
@@ -396,41 +433,76 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         <input value={preferredAreas} onChange={(e) => setPreferredAreas(e.target.value)} placeholder="e.g. Yaba, Akoka" className={input} />
                       </div>
                       <div>
-                        <label className={label}>What you bring to the table</label>
-                        <textarea value={bringToTable} onChange={(e) => setBringToTable(e.target.value)} placeholder="e.g. I'm neat, pay rent early, good cook" rows={2} className={`${input} resize-none`} />
+                        <label className={label}>What you bring as a roommate</label>
+                        <textarea value={bringToTable} onChange={(e) => setBringToTable(e.target.value)} placeholder="e.g. Neat, pay on time, good cook" rows={2} className={`${input} resize-none`} />
                       </div>
                     </div>
                   </>
                 )}
 
-                {/* Bio — always shown on step 4 */}
+                {/* Bio */}
                 <div className="mt-5 pt-5 border-t border-border">
                   <label className={label}>About you</label>
-                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A few words for potential roommates" rows={2} className={`${input} resize-none`} />
+                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell roommates a bit about yourself" rows={2} className={`${input} resize-none`} />
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 5: Socials */}
+            {/* STEP 5: Socials (toggled) */}
             {step === 5 && (
               <motion.div key="s5" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">How to reach you</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Email is required, rest are optional</p>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Stay connected</h1>
+                <p className="text-[14px] text-ink-tertiary mb-6">Add the platforms you use</p>
 
                 <div className="space-y-3">
-                  {[
-                    { icon: null, label: 'Email', val: email, set: setEmail, ph: 'you@email.com', required: true },
-                    { icon: <WhatsAppIcon className="w-4 h-4" />, label: 'WhatsApp', val: whatsapp, set: setWhatsapp, ph: '080...' },
-                    { icon: <InstagramIcon className="w-4 h-4" />, label: 'Instagram', val: instagram, set: setInstagram, ph: '@handle' },
-                    { icon: <TikTokIcon className="w-4 h-4" />, label: 'TikTok', val: tiktok, set: setTiktok, ph: '@handle' },
-                    { icon: <FacebookIcon className="w-4 h-4" />, label: 'Facebook', val: facebook, set: setFacebook, ph: 'Profile URL' },
-                    { icon: <XIcon className="w-4 h-4" />, label: 'X (Twitter)', val: twitter, set: setTwitter, ph: '@handle' },
-                  ].map((f, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center flex-shrink-0">
-                        {f.icon || <span className="text-[12px] font-bold text-ink-tertiary">@</span>}
+                  {/* Email — always shown */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center flex-shrink-0">
+                      <span className="text-[12px] font-bold text-ink-tertiary">@</span>
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[11px] font-semibold text-ink-tertiary mb-0.5 block">Email <span className="text-brand">*</span></label>
+                      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className={`${input} !py-2.5`} />
+                    </div>
+                  </div>
+
+                  {/* Toggled socials */}
+                  {socialPlatforms.map((platform) => (
+                    <div key={platform.key}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${socialToggles[platform.key] ? 'bg-brand' : 'bg-cream'}`}>
+                          <span className={socialToggles[platform.key] ? 'text-white' : 'text-ink-secondary'}>{platform.icon}</span>
+                        </div>
+                        <span className="flex-1 text-[15px] font-medium text-ink">{platform.label}</span>
+                        <button
+                          onClick={() => toggleSocial(platform.key)}
+                          className={`w-11 h-6 rounded-full transition-colors relative ${socialToggles[platform.key] ? 'bg-brand' : 'bg-border'}`}
+                        >
+                          <motion.div
+                            className="w-5 h-5 bg-white rounded-full shadow-sm absolute top-0.5"
+                            animate={{ left: socialToggles[platform.key] ? 22 : 2 }}
+                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+                          />
+                        </button>
                       </div>
-                      <input value={f.val} onChange={(e) => f.set(e.target.value)} placeholder={f.ph} className={`${input} !py-3`} />
+                      <AnimatePresence>
+                        {socialToggles[platform.key] && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            transition={{ duration: 0.2 }}
+                            className="overflow-hidden"
+                          >
+                            <input
+                              value={platform.val}
+                              onChange={(e) => platform.set(e.target.value)}
+                              placeholder={platform.ph}
+                              className={`${input} !py-2.5 mt-2 ml-[52px] w-[calc(100%-52px)]`}
+                            />
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                     </div>
                   ))}
                 </div>
@@ -440,11 +512,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {/* STEP 6: Preview + Submit */}
             {step === 6 && (
               <motion.div key="s6" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Preview your listing</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">This is how others will see you</p>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Looks good?</h1>
+                <p className="text-[14px] text-ink-tertiary mb-6">Here's how your listing will appear</p>
 
                 <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
-                  {/* Image */}
                   <div className="relative aspect-[4/3] bg-border">
                     {getPreviewPhotos().length > 0 ? (
                       <>
@@ -478,7 +549,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                     )}
                   </div>
 
-                  {/* Content */}
                   <div className="p-4">
                     <h2 className="text-[17px] font-display font-bold text-ink mb-1 tracking-[-0.03em]">{getPreviewTitle()}</h2>
                     <div className="flex items-center gap-1 text-ink-secondary text-[13px] mb-3">
@@ -509,7 +579,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         </div>
       </div>
 
-      {/* ── Fixed Bottom Bar ── */}
+      {/* Fixed Bottom Bar */}
       <div className="flex-shrink-0 px-5 pb-6 pt-3 bg-gradient-to-t from-cream via-cream to-transparent">
         <div className="max-w-sm mx-auto">
           <AnimatePresence>
@@ -528,7 +598,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
               whileTap={{ scale: 0.97 }}
               className="w-full py-4 bg-brand text-white rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:bg-brand/90 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
-              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Submitting...</span></> : <span>Complete onboarding</span>}
+              {loading ? <><Loader2 className="w-5 h-5 animate-spin" /><span>Setting up your profile...</span></> : <span>All done — let's go</span>}
             </motion.button>
           ) : (
             <div className="flex items-center gap-3">

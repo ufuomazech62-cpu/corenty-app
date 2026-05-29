@@ -28,12 +28,6 @@ async function getUserFromRequest(req: any): Promise<number | null> {
   return p?.userId ?? null;
 }
 
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -41,25 +35,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const userId = await getUserFromRequest(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    const { filename } = req.query;
-    if (!filename || typeof filename !== 'string') return res.status(400).json({ error: 'Missing filename' });
+    const { filename, data, contentType } = req.body;
 
-    // Read raw request body (file bytes sent directly)
-    const chunks: Buffer[] = [];
-    for await (const chunk of req as any) {
-      chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+    if (!filename || !data) {
+      return res.status(400).json({ error: 'Missing filename or data' });
     }
-    const buffer = Buffer.concat(chunks);
 
+    const buffer = Buffer.from(data, 'base64');
     if (buffer.length === 0) return res.status(400).json({ error: 'Empty file' });
 
-    // Detect content type from header or file extension
-    const contentType = req.headers['content-type'] || detectContentType(filename);
+    const ct = contentType || detectContentType(filename);
 
-    // Upload to Vercel Blob
     const blob = await put(filename, buffer, {
       access: 'public',
-      contentType,
+      contentType: ct,
     });
 
     return res.status(200).json({ url: blob.url });

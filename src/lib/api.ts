@@ -4,7 +4,7 @@ const API_BASE = '/api'
 class ApiClient {
   private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
     const url = `${API_BASE}${endpoint}`
-    
+
     const response = await fetch(url, {
       ...options,
       credentials: 'include',
@@ -94,25 +94,43 @@ class ApiClient {
     })
   }
 
-  // Upload — send raw file bytes (NOT FormData)
+  // Upload — base64 JSON (most reliable on Vercel)
   async uploadImage(file: File, filename?: string): Promise<{ url: string }> {
     const fname = filename || file.name
-    const response = await fetch(`/api/upload?filename=${encodeURIComponent(fname)}`, {
+    const data = await fileToBase64(file)
+
+    return this.request<{ url: string }>('/upload', {
       method: 'POST',
-      body: file,
-      credentials: 'include',
-      headers: {
-        'Content-Type': file.type || 'image/jpeg',
-      },
+      body: JSON.stringify({
+        filename: fname,
+        data,
+        contentType: file.type || detectMime(fname),
+      }),
     })
-
-    if (!response.ok) {
-      const error = await response.json().catch(() => ({ error: 'Upload failed' }))
-      throw new Error(error.error || 'Upload failed')
-    }
-
-    return response.json()
   }
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = reader.result as string
+      // Strip the data URL prefix (data:image/jpeg;base64,...)
+      const base64 = result.split(',')[1] || result
+      resolve(base64)
+    }
+    reader.onerror = () => reject(new Error('Failed to read file'))
+    reader.readAsDataURL(file)
+  })
+}
+
+function detectMime(filename: string): string {
+  const ext = filename.toLowerCase().split('.').pop()
+  const types: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    gif: 'image/gif', webp: 'image/webp',
+  }
+  return types[ext || ''] || 'image/jpeg'
 }
 
 export const api = new ApiClient()
