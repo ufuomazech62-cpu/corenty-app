@@ -40,6 +40,10 @@ class ApiClient {
     return this.request<Listing[]>('/listings')
   }
 
+  async getMyListings() {
+    return this.request<Listing[]>('/listings?mine=true')
+  }
+
   async getListingById(id: number) {
     return this.request<Listing>(`/listings?id=${id}`)
   }
@@ -106,6 +110,22 @@ class ApiClient {
         data,
         contentType: 'image/jpeg',
       }),
+    })
+  }
+
+  // Delete account
+  async deleteAccount() {
+    return this.request<{ success: boolean; message: string }>('/users/profile', {
+      method: 'DELETE',
+      body: JSON.stringify({ confirm: 'DELETE' }),
+    })
+  }
+
+  // Feedback
+  async submitFeedback(data: { rating: number; message: string; category?: string }) {
+    return this.request<{ success: boolean; message: string }>('/feedback', {
+      method: 'POST',
+      body: JSON.stringify(data),
     })
   }
 }
@@ -185,7 +205,14 @@ export interface Listing {
   distance_to_campus: number | null
   u_name?: string
   u_photo?: string | null
+  u_photos?: string[]
+  u_bio?: string | null
+  u_socials?: Record<string, string>
+  u_mode?: string | null
+  u_budget?: string | null
+  u_preferred_area?: string | null
   institution?: string
+  matric_number?: string
   verified?: boolean
   created_at: string
   updated_at: string
