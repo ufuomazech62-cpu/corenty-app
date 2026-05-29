@@ -4,7 +4,7 @@ import {
   Heart, X, MapPin, Home, Sparkles, LogOut, Settings, User, ChevronRight,
   ChevronLeft, Edit3, Shield, RefreshCw, Star, MessageSquare, Trash2,
   AlertTriangle, DollarSign, Search, BookOpen, HelpCircle, Bell,
-  CreditCard, Instagram, Facebook, Twitter, Phone, Mail, Award
+  CreditCard, Instagram, Facebook, Twitter, Phone, Mail, Award, Share2
 } from 'lucide-react'
 import { TikTokIcon, WhatsAppIcon } from './BrandIcons'
 import { api, Listing, Match } from '../lib/api'
@@ -23,25 +23,17 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [showSidebar, setShowSidebar] = useState(false)
-
-  // Sidebar panels
-  const [sidebarPanel, setSidebarPanel] = useState<string | null>(null) // 'profile' | 'listings' | 'matches' | 'prefs' | 'settings' | 'feedback' | 'delete'
+  const [sidebarPanel, setSidebarPanel] = useState<string | null>(null)
   const [myListings, setMyListings] = useState<Listing[]>([])
   const [matches, setMatches] = useState<Match[]>([])
   const [freshUser, setFreshUser] = useState(user)
-
-  // Feedback state
   const [feedbackRating, setFeedbackRating] = useState(5)
   const [feedbackCategory, setFeedbackCategory] = useState('general')
   const [feedbackMessage, setFeedbackMessage] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const [feedbackDone, setFeedbackDone] = useState(false)
-
-  // Delete account state
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
-
-  // Edit profile state
   const [editName, setEditName] = useState(user?.name || '')
   const [editBio, setEditBio] = useState(user?.bio || '')
   const [editInstitution, setEditInstitution] = useState(user?.institution || '')
@@ -51,14 +43,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   const [editDistance, setEditDistance] = useState(user?.distance_to_campus || 2)
   const [savingProfile, setSavingProfile] = useState(false)
   const [saveSuccess, setSaveSuccess] = useState(false)
-
-  // Carousel indexes
   const [profileCarousel, setProfileCarousel] = useState(0)
   const [detailCarousel, setDetailCarousel] = useState(0)
 
-  useEffect(() => {
-    loadListings()
-  }, [])
+  useEffect(() => { loadListings() }, [])
 
   async function loadListings() {
     try {
@@ -132,13 +120,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
     setSaveSuccess(false)
     try {
       await api.updateUserProfile({
-        name: editName,
-        bio: editBio,
-        institution: editInstitution,
-        matric_number: editMatric,
-        budget: editBudget,
-        preferred_area: editArea,
-        distance_to_campus: editDistance,
+        name: editName, bio: editBio, institution: editInstitution,
+        matric_number: editMatric, budget: editBudget,
+        preferred_area: editArea, distance_to_campus: editDistance,
       })
       setSaveSuccess(true)
       await loadFreshUser()
@@ -206,22 +190,36 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
       <div className="min-h-screen bg-cream flex items-center justify-center p-4">
         <div className="text-center max-w-sm">
           <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-6">
-            <Home className="w-10 h-10 text-brand" />
+            <Heart className="w-10 h-10 text-brand" />
           </div>
-          <h2 className="text-2xl font-display font-bold text-ink mb-3 tracking-[-0.03em]">You're early — that's actually great</h2>
-          <p className="text-ink-secondary mb-2 leading-relaxed">
-            Your listing is live and ready. When new people join CoRenty, they'll see your profile right away.
+          <h2 className="text-2xl font-display font-bold text-ink mb-3 tracking-[-0.03em]">Your listing is live!</h2>
+          <p className="text-ink-secondary mb-4 leading-relaxed">
+            You're the first one here. Your profile is visible to other students — they can see you and match with you when they join.
           </p>
-          <p className="text-[13px] text-ink-tertiary mb-6">
-            Share your link with friends to get matches faster.
-          </p>
+          <div className="p-4 bg-cream rounded-2xl mb-6 text-left">
+            <p className="text-[13px] text-ink-tertiary mb-2 font-semibold">What happens next:</p>
+            <ul className="space-y-2 text-sm text-ink-secondary">
+              <li className="flex items-start gap-2">
+                <span className="text-brand font-bold">•</span>
+                <span>When new people join, you'll see their listings here</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-brand font-bold">•</span>
+                <span>Swipe right to match with them</span>
+              </li>
+              <li className="flex items-start gap-2">
+                <span className="text-brand font-bold">•</span>
+                <span>Share CoRenty with friends to get matches faster</span>
+              </li>
+            </ul>
+          </div>
           <div className="flex items-center gap-3">
             <button
-              onClick={() => setShowSidebar(true)}
+              onClick={() => { setShowSidebar(true); setSidebarPanel('listings') }}
               className="flex-1 py-4 bg-white border-2 border-border text-ink rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:border-ink/20 transition-colors flex items-center justify-center gap-2"
             >
-              <Settings className="w-4 h-4" />
-              <span>My Account</span>
+              <BookOpen className="w-4 h-4" />
+              <span>My Listing</span>
             </button>
             <button
               onClick={async () => {
@@ -230,9 +228,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   alert('Link copied! Share it with friends.')
                 } catch { /* ignore */ }
               }}
-              className="flex-1 py-4 bg-brand text-white rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:bg-brand/90 transition-colors"
+              className="flex-1 py-4 bg-brand text-white rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:bg-brand/90 transition-colors flex items-center justify-center gap-2"
             >
-              Share CoRenty
+              <Share2 className="w-4 h-4" />
+              <span>Share Link</span>
             </button>
           </div>
         </div>
@@ -255,10 +254,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             New people join every day. Come back soon or browse again.
           </p>
           <div className="flex items-center gap-3">
-            <button
-              onClick={handleResetSwipes}
-              className="flex-1 py-4 bg-white border-2 border-border text-ink rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:border-ink/20 transition-colors flex items-center justify-center gap-2"
-            >
+            <button onClick={handleResetSwipes} className="flex-1 py-4 bg-white border-2 border-border text-ink rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:border-ink/20 transition-colors flex items-center justify-center gap-2">
               <RefreshCw className="w-4 h-4" />
               <span>Browse again</span>
             </button>
@@ -299,12 +295,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             </div>
             <span className="text-lg font-display font-bold tracking-[-0.03em] text-ink">CoRenty</span>
           </button>
-
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => { setShowSidebar(true); setSidebarPanel(null) }}
-              className="w-9 h-9 rounded-lg bg-cream border border-border flex items-center justify-center hover:border-ink/20 transition-colors"
-            >
+            <button onClick={() => { setShowSidebar(true); setSidebarPanel(null) }} className="w-9 h-9 rounded-lg bg-cream border border-border flex items-center justify-center hover:border-ink/20 transition-colors">
               <div className="grid grid-cols-3 gap-[3px]">
                 {[...Array(9)].map((_, i) => (
                   <div key={i} className="w-[3px] h-[3px] rounded-full bg-ink" />
@@ -326,7 +318,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
             transition={{ duration: 0.3 }}
             className="bg-surface rounded-3xl shadow-lg overflow-hidden"
           >
-            {/* Image carousel */}
             <div className="relative aspect-[4/3] bg-border">
               {currentListing.photos && currentListing.photos.length > 0 ? (
                 <img src={currentListing.photos[0]} alt={currentListing.title} className="w-full h-full object-cover" />
@@ -349,7 +340,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
               )}
             </div>
 
-            {/* Content */}
             <div className="p-6">
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
@@ -361,11 +351,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 </div>
               </div>
 
-              {/* Author */}
-              <button
-                onClick={() => setShowProfileModal(true)}
-                className="flex items-center gap-3 mb-4 p-3 bg-cream rounded-xl hover:bg-border transition-colors w-full"
-              >
+              <button onClick={() => setShowProfileModal(true)} className="flex items-center gap-3 mb-4 p-3 bg-cream rounded-xl hover:bg-border transition-colors w-full">
                 <div className="relative">
                   {currentListing.u_photo ? (
                     <img src={currentListing.u_photo} alt={currentListing.u_name} className="w-12 h-12 rounded-full object-cover" />
@@ -393,10 +379,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 <p className="text-ink-secondary text-sm mb-4 line-clamp-2">{currentListing.description}</p>
               )}
 
-              <button
-                onClick={() => setShowDetailModal(true)}
-                className="w-full py-3 bg-cream text-ink rounded-xl font-semibold hover:bg-border transition-colors"
-              >
+              <button onClick={() => setShowDetailModal(true)} className="w-full py-3 bg-cream text-ink rounded-xl font-semibold hover:bg-border transition-colors">
                 View Details
               </button>
             </div>
@@ -416,15 +399,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         </div>
       </div>
 
-      {/* ═══════════════ PROFILE MODAL ═══════════════ */}
+      {/* PROFILE MODAL */}
       <AnimatePresence>
         {showProfileModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowProfileModal(false)} className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
             <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto">
               <div className="p-6">
                 <div className="w-12 h-1 bg-border rounded-full mx-auto mb-6" />
-
-                {/* Profile photos carousel */}
                 <div className="relative w-full aspect-square rounded-2xl overflow-hidden mb-6 bg-border">
                   {(currentListing.u_photos && currentListing.u_photos.length > 0) ? (
                     <>
@@ -452,7 +433,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   )}
                 </div>
 
-                {/* User info */}
                 <div className="text-center mb-6">
                   <h3 className="text-2xl font-display font-bold text-ink mb-1">{currentListing.u_name}</h3>
                   <p className="text-ink-secondary">{currentListing.institution}</p>
@@ -469,7 +449,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   )}
                 </div>
 
-                {/* Bio */}
                 {currentListing.u_bio && (
                   <div className="mb-6">
                     <h4 className="text-[13px] font-semibold text-ink-tertiary mb-2 uppercase tracking-wider">About</h4>
@@ -477,7 +456,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* Details */}
                 <div className="grid grid-cols-2 gap-3 mb-6">
                   {currentListing.u_mode && (
                     <div className="p-3 bg-cream rounded-xl">
@@ -499,7 +477,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   )}
                 </div>
 
-                {/* Socials */}
                 {currentListing.u_socials && Object.keys(currentListing.u_socials).length > 0 && (
                   <div className="mb-6">
                     <h4 className="text-[13px] font-semibold text-ink-tertiary mb-3 uppercase tracking-wider">Connect</h4>
@@ -553,15 +530,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         )}
       </AnimatePresence>
 
-      {/* ═══════════════ DETAIL MODAL ═══════════════ */}
+      {/* DETAIL MODAL */}
       <AnimatePresence>
         {showDetailModal && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowDetailModal(false)} className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-end sm:items-center justify-center p-4">
             <motion.div initial={{ y: 100, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 100, opacity: 0 }} onClick={(e) => e.stopPropagation()} className="bg-surface rounded-t-3xl sm:rounded-3xl w-full max-w-md max-h-[85vh] overflow-y-auto">
               <div className="p-6">
                 <div className="w-12 h-1 bg-border rounded-full mx-auto mb-6" />
-
-                {/* Apartment photos carousel */}
                 {(() => {
                   const photos = currentListing.mode === 'have'
                     ? (currentListing.apartment_photos?.length ? currentListing.apartment_photos : currentListing.photos)
@@ -592,7 +567,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                 })()}
 
                 <h3 className="text-2xl font-display font-bold text-ink mb-2">{currentListing.title}</h3>
-
                 <div className="flex items-center gap-4 text-sm text-ink-secondary mb-4">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-4 h-4" />
@@ -603,7 +577,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   )}
                 </div>
 
-                {/* Distance */}
                 {currentListing.distance_to_campus && (
                   <div className="flex items-center gap-2 p-3 bg-cream rounded-xl mb-4">
                     <Search className="w-4 h-4 text-ink-tertiary" />
@@ -618,7 +591,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* Author section */}
                 <div className="p-4 bg-cream rounded-xl mb-4">
                   <div className="flex items-center gap-3">
                     {currentListing.u_photo ? (
@@ -643,7 +615,7 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         )}
       </AnimatePresence>
 
-      {/* ═══════════════ MATCH POPUP ═══════════════ */}
+      {/* MATCH POPUP */}
       <AnimatePresence>
         {showMatchPopup && matchedListing && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 bg-ink/60 backdrop-blur-sm flex items-center justify-center p-4">
@@ -673,14 +645,13 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
         )}
       </AnimatePresence>
 
-      {/* ═══════════════ SIDEBAR ═══════════════ */}
+      {/* SIDEBAR */}
       <AnimatePresence>
         {showSidebar && (
           <>
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => { setShowSidebar(false); closePanel() }} className="fixed inset-0 z-40 bg-ink/60 backdrop-blur-sm" />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed right-0 top-0 bottom-0 z-50 w-80 max-w-[85vw] bg-surface shadow-2xl overflow-y-auto">
               <div className="p-6">
-                {/* Sidebar Header */}
                 <div className="flex items-center justify-between mb-6">
                   <h3 className="text-xl font-display font-bold text-ink">
                     {sidebarPanel === 'profile' ? 'My Profile' :
@@ -696,10 +667,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </button>
                 </div>
 
-                {/* ═══ MAIN MENU ═══ */}
                 {!sidebarPanel && (
                   <>
-                    {/* User card */}
                     <div className="flex items-center gap-3 mb-6 p-4 bg-cream rounded-2xl">
                       {freshUser.profile_photo ? (
                         <img src={freshUser.profile_photo} alt="" className="w-12 h-12 rounded-full object-cover" />
@@ -712,7 +681,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                       </div>
                     </div>
 
-                    {/* Menu items */}
                     <div className="space-y-1">
                       {[
                         { icon: User, label: 'My Profile', panel: 'profile' },
@@ -737,7 +705,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </>
                 )}
 
-                {/* ═══ MY PROFILE ═══ */}
                 {sidebarPanel === 'profile' && (
                   <div className="space-y-4">
                     <div className="text-center mb-4">
@@ -775,7 +742,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ MY LISTINGS ═══ */}
                 {sidebarPanel === 'listings' && (
                   <div className="space-y-3">
                     {myListings.length === 0 ? (
@@ -815,7 +781,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ MY MATCHES ═══ */}
                 {sidebarPanel === 'matches' && (
                   <div className="space-y-3">
                     {matches.length === 0 ? (
@@ -848,7 +813,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ SEARCH PREFERENCES ═══ */}
                 {sidebarPanel === 'prefs' && (
                   <div className="space-y-4">
                     <p className="text-[14px] text-ink-secondary mb-4">Set what you're looking for so we show you the best matches first.</p>
@@ -873,7 +837,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ SETTINGS (Edit Profile) ═══ */}
                 {sidebarPanel === 'settings' && (
                   <div className="space-y-4">
                     <div>
@@ -929,11 +892,9 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ FEEDBACK ═══ */}
                 {sidebarPanel === 'feedback' && !feedbackDone && (
                   <div className="space-y-4">
                     <p className="text-[14px] text-ink-secondary">Help us make CoRenty better for you.</p>
-
                     <div>
                       <label className={label}>Rating</label>
                       <div className="flex items-center gap-2">
@@ -944,7 +905,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                         ))}
                       </div>
                     </div>
-
                     <div>
                       <label className={label}>Category</label>
                       <select value={feedbackCategory} onChange={(e) => setFeedbackCategory(e.target.value)} className={input}>
@@ -954,12 +914,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                         <option value="safety">Safety Concern</option>
                       </select>
                     </div>
-
                     <div>
                       <label className={label}>Message</label>
                       <textarea value={feedbackMessage} onChange={(e) => setFeedbackMessage(e.target.value)} rows={4} placeholder="What's on your mind?" className={`${input} resize-none`} />
                     </div>
-
                     <button onClick={handleSubmitFeedback} disabled={feedbackSubmitting || !feedbackMessage.trim()} className="w-full py-3 bg-brand text-white rounded-xl font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
                       {feedbackSubmitting ? 'Sending...' : 'Submit Feedback'}
                     </button>
@@ -976,7 +934,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                   </div>
                 )}
 
-                {/* ═══ DELETE ACCOUNT ═══ */}
                 {sidebarPanel === 'delete' && (
                   <div className="space-y-4">
                     <div className="p-4 bg-nope/10 rounded-xl border border-nope/20">
@@ -988,12 +945,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                         Deleting your account will remove all your data — profile, listings, matches, and subscription. This cannot be undone.
                       </p>
                     </div>
-
                     <div>
                       <label className={label}>Type <span className="font-mono font-bold text-nope">DELETE</span> to confirm</label>
                       <input value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)} placeholder="Type DELETE here" className={`${input} font-mono`} />
                     </div>
-
                     <button
                       onClick={handleDeleteAccount}
                       disabled={deleteConfirm !== 'DELETE' || deleting}
@@ -1001,7 +956,6 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
                     >
                       {deleting ? 'Deleting...' : <><Trash2 className="w-4 h-4" /> Delete My Account</>}
                     </button>
-
                     <button onClick={closePanel} className="w-full py-3 bg-cream text-ink rounded-xl font-semibold hover:bg-border transition-colors">
                       Cancel
                     </button>
