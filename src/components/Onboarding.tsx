@@ -1170,7 +1170,3 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 }
 
 export default Onboarding
-/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-e8ebb525b9aa.sh: No such file or directory
-/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-e8ebb525b9aa.txt: No such file or directory
-/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-e8ebb525b9aa.sh: No such file or directory
-/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-e8ebb525b9aa.txt: No such file or directory
