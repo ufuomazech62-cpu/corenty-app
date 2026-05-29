@@ -97,40 +97,51 @@ class ApiClient {
   // Upload — base64 JSON (most reliable on Vercel)
   async uploadImage(file: File, filename?: string): Promise<{ url: string }> {
     const fname = filename || file.name
-    const data = await fileToBase64(file)
+    const data = await compressAndEncode(file)
 
     return this.request<{ url: string }>('/upload', {
       method: 'POST',
       body: JSON.stringify({
         filename: fname,
         data,
-        contentType: file.type || detectMime(fname),
+        contentType: 'image/jpeg',
       }),
     })
   }
 }
 
-function fileToBase64(file: File): Promise<string> {
+/**
+ * Compress image via canvas: resize to max 1200px, JPEG 80% quality.
+ * A 12MB phone photo becomes ~200-400KB.
+ */
+function compressAndEncode(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const result = reader.result as string
-      // Strip the data URL prefix (data:image/jpeg;base64,...)
-      const base64 = result.split(',')[1] || result
+    const img = new Image()
+    const url = URL.createObjectURL(file)
+    img.onload = () => {
+      URL.revokeObjectURL(url)
+      const MAX = 1200
+      let w = img.width
+      let h = img.height
+      if (w > MAX || h > MAX) {
+        if (w > h) { h = Math.round((h * MAX) / w); w = MAX }
+        else { w = Math.round((w * MAX) / h); h = MAX }
+      }
+      const canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(img, 0, 0, w, h)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+      const base64 = dataUrl.split(',')[1] || dataUrl
       resolve(base64)
     }
-    reader.onerror = () => reject(new Error('Failed to read file'))
-    reader.readAsDataURL(file)
+    img.onerror = () => {
+      URL.revokeObjectURL(url)
+      reject(new Error('Failed to load image'))
+    }
+    img.src = url
   })
-}
-
-function detectMime(filename: string): string {
-  const ext = filename.toLowerCase().split('.').pop()
-  const types: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp',
-  }
-  return types[ext || ''] || 'image/jpeg'
 }
 
 export const api = new ApiClient()

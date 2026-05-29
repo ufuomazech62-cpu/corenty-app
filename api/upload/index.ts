@@ -2,6 +2,15 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { put } from '@vercel/blob';
 import crypto from 'crypto';
 
+// Increase body limit for base64 uploads (default is 1MB)
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+};
+
 // === Inlined JWT ===
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
 async function verifyToken(token: string): Promise<{ userId: number } | null> {
@@ -42,9 +51,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const buffer = Buffer.from(data, 'base64');
-    if (buffer.length === 0) return res.status(400).json({ error: 'Empty file' });
+    if (buffer.length === 0) return res.status(400).json({ error: 'Empty file after decoding' });
 
-    const ct = contentType || detectContentType(filename);
+    const ct = contentType || 'image/jpeg';
 
     const blob = await put(filename, buffer, {
       access: 'public',
@@ -54,15 +63,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ url: blob.url });
   } catch (error) {
     console.error('Upload error:', error);
-    return res.status(500).json({ error: 'Failed to upload file', details: error instanceof Error ? error.message : String(error) });
+    return res.status(500).json({
+      error: 'Failed to upload file',
+      details: error instanceof Error ? error.message : String(error),
+    });
   }
-}
-
-function detectContentType(filename: string): string {
-  const ext = filename.toLowerCase().split('.').pop();
-  const types: Record<string, string> = {
-    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-    gif: 'image/gif', webp: 'image/webp', svg: 'image/svg+xml',
-  };
-  return types[ext || ''] || 'application/octet-stream';
 }
