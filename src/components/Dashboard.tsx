@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'motion/react'
-import { Heart, X, MapPin, Home, Sparkles, Phone, Mail, Grid3x3, LogOut, Settings, User, ChevronRight, ChevronLeft, Edit3, Shield } from 'lucide-react'
+import { Heart, X, MapPin, Home, Sparkles, Phone, Mail, Grid3x3, LogOut, Settings, User, ChevronRight, ChevronLeft, Edit3, Shield, RefreshCw } from 'lucide-react'
 import { TikTokIcon, InstagramIcon, FacebookIcon, XIcon, WhatsAppIcon } from './BrandIcons'
 import { api, Listing } from '../lib/api'
 
@@ -68,6 +68,10 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
     onNavigate('landing')
   }
 
+  const handleResetSwipes = () => {
+    setCurrentIndex(0)
+  }
+
   const currentListing = listings[currentIndex]
 
   if (loading) {
@@ -81,12 +85,30 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   if (listings.length === 0) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="w-20 h-20 bg-border rounded-full flex items-center justify-center mx-auto mb-4">
-            <Home className="w-10 h-10 text-ink-tertiary" />
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Home className="w-10 h-10 text-brand" />
           </div>
-          <h2 className="text-2xl font-display font-bold text-ink mb-2">No listings yet</h2>
-          <p className="text-ink-secondary">Be the first to post a listing!</p>
+          <h2 className="text-2xl font-display font-bold text-ink mb-3 tracking-[-0.03em]">You're early — that's actually great</h2>
+          <p className="text-ink-secondary mb-2 leading-relaxed">
+            Your listing is live and ready. When new people join CoRenty, they'll see your profile right away.
+          </p>
+          <p className="text-[13px] text-ink-tertiary mb-6">
+            Share your link with friends to get matches faster.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText('https://corenty-v2.vercel.app')
+                  alert('Link copied! Share it with friends.')
+                } catch { /* ignore */ }
+              }}
+              className="flex-1 py-4 bg-brand text-white rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:bg-brand/90 transition-colors"
+            >
+              Share CoRenty
+            </button>
+          </div>
         </div>
       </div>
     )
@@ -95,15 +117,46 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
   if (currentIndex >= listings.length) {
     return (
       <div className="min-h-screen bg-cream flex items-center justify-center p-4">
-        <div className="text-center">
-          <div className="w-20 h-20 bg-brand/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Sparkles className="w-10 h-10 text-brand" />
+        <div className="text-center max-w-sm">
+          <div className="w-20 h-20 bg-like/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <Heart className="w-10 h-10 text-like" fill="currentColor" />
           </div>
-          <h2 className="text-2xl font-display font-bold text-ink mb-2">You've seen all listings!</h2>
-          <p className="text-ink-secondary">Check back later for new listings.</p>
+          <h2 className="text-2xl font-display font-bold text-ink mb-3 tracking-[-0.03em]">That's everyone for now</h2>
+          <p className="text-ink-secondary mb-2 leading-relaxed">
+            You've seen all current listings. Your profile is live — others can find you and swipe on your listing too.
+          </p>
+          <p className="text-[13px] text-ink-tertiary mb-6">
+            New people join every day. Come back soon or browse again.
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleResetSwipes}
+              className="flex-1 py-4 bg-white border-2 border-border text-ink rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:border-ink/20 transition-colors flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Browse again</span>
+            </button>
+            <button
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText('https://corenty-v2.vercel.app')
+                  alert('Link copied! Share it with friends.')
+                } catch { /* ignore */ }
+              }}
+              className="flex-1 py-4 bg-brand text-white rounded-2xl font-bold text-[15px] tracking-[-0.02em] hover:bg-brand/90 transition-colors"
+            >
+              Invite friends
+            </button>
+          </div>
         </div>
       </div>
     )
+  }
+
+  const getModeBadge = (mode: string) => {
+    if (mode === 'have') return { text: 'Has Apartment', cls: 'bg-like text-white' }
+    if (mode === 'together') return { text: 'Looking Together', cls: 'bg-[#2563eb] text-white' }
+    return { text: 'Needs Apartment', cls: 'bg-brand text-white' }
   }
 
   return (
@@ -160,12 +213,8 @@ const Dashboard: React.FC<DashboardProps> = ({ user, onNavigate }) => {
 
               {/* Mode Badge */}
               <div className="absolute top-4 left-4">
-                <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${
-                  currentListing.mode === 'have' 
-                    ? 'bg-like text-white' 
-                    : 'bg-brand text-white'
-                }`}>
-                  {currentListing.mode === 'have' ? 'Has Apartment' : 'Needs Apartment'}
+                <div className={`px-3 py-1.5 rounded-full text-xs font-bold ${getModeBadge(currentListing.mode).cls}`}>
+                  {getModeBadge(currentListing.mode).text}
                 </div>
               </div>
 
