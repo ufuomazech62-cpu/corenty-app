@@ -3,7 +3,7 @@ import { neon } from '@neondatabase/serverless';
 // Database connection - uses environment variable, never hardcoded
 const sql = neon(process.env.DATABASE_URL!);
 
-export default sql;
+export { sql };
 
 // Helper types
 export interface User {
