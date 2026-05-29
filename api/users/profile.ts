@@ -4,6 +4,11 @@ import { getUserFromRequest } from '../auth/jwt';
 
 const sql = neon(process.env.DATABASE_URL!);
 
+// Map frontend field names to DB column names
+const COLUMN_MAP: Record<string, string> = {
+  preferred_location: 'preferred_area',
+};
+
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'PUT') {
     try {
@@ -21,16 +26,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       for (const [key, value] of Object.entries(updates)) {
         if (value !== undefined) {
-          setClauses.push(`${key} = $${paramIndex}`);
-          values.push(value);
+          const dbColumn = COLUMN_MAP[key] || key;
+          // Stringify objects for JSONB columns
+          const dbValue = (typeof value === 'object' && value !== null && !Array.isArray(value))
+            ? JSON.stringify(value)
+            : value;
+          setClauses.push(`${dbColumn} = $${paramIndex}`);
+          values.push(dbValue);
           paramIndex++;
         }
+      }
+
+      if (setClauses.length === 0) {
+        return res.status(400).json({ error: 'No updates provided' });
       }
 
       setClauses.push(`updated_at = NOW()`);
 
       const query = `
-        UPDATE users 
+        UPDATE users
         SET ${setClauses.join(', ')}
         WHERE id = $${paramIndex}
         RETURNING *

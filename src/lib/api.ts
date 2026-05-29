@@ -131,6 +131,8 @@ export interface User {
   distance_to_campus: number
   budget: string | null
   preferred_location: string | null
+  preferred_area?: string | null
+  preferred_area?: string | null
   subscription_status: 'active' | 'inactive' | 'cancelled'
   subscription_expires_at: string | null
 }
