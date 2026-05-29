@@ -1,4 +1,3 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
 import crypto from 'crypto';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
@@ -45,7 +44,7 @@ export async function verifyToken(token: string): Promise<{ userId: number } | n
   }
 }
 
-export async function getUserFromRequest(req: VercelRequest): Promise<number | null> {
+export async function getUserFromRequest(req: any): Promise<number | null> {
   const authHeader = req.headers.authorization;
   let token: string | null = null;
 

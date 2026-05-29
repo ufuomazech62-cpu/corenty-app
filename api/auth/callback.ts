@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { createToken } from './jwt';
+import { createToken } from '../../src/lib/jwt';
 
 const sql = neon(process.env.DATABASE_URL!);
 
