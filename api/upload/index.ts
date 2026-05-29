@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { put } from '@vercel/blob';
-import { getUserFromRequest } from '../../src/lib/jwt';
+import { getUserFromRequest } from '../_lib/jwt';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'POST') {
