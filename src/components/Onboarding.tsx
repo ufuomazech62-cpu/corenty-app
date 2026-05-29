@@ -121,7 +121,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
           email
         },
         budget: mode === 'need' ? budget : undefined,
-        preferred_location: mode === 'need' ? preferredLocation : undefined,
+        preferred_area: mode === 'need' ? preferredLocation : undefined,
         distance_to_campus: mode === 'need' ? distanceToCampus : undefined
       })
 
@@ -665,3 +665,5 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 }
 
 export default Onboarding
+/usr/bin/bash: line 5: /Users/H-P/.hermes-zechy/cache/terminal/hermes-snap-4ef0a2322861.sh: No such file or directory
+/usr/bin/bash: line 6: /Users/H-P/.hermes-zechy/cache/terminal/hermes-cwd-4ef0a2322861.txt: No such file or directory

@@ -2,7 +2,7 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 
 export default function handler(req: VercelRequest, res: VercelResponse) {
   const clientId = process.env.GOOGLE_CLIENT_ID;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`;
+  const redirectUri = `${process.env.APP_URL}/api/auth/callback`;
 
   const params = new URLSearchParams({
     client_id: clientId!,

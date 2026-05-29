@@ -21,10 +21,21 @@ export async function verifyToken(token: string): Promise<{ userId: number } | n
 }
 
 export async function getUserFromRequest(req: VercelRequest): Promise<number | null> {
+  // Check Authorization header first (Bearer token)
   const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) return null;
+  let token: string | null = null;
 
-  const token = authHeader.substring(7);
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else {
+    // Fall back to cookie (set by OAuth callback)
+    const cookies = req.headers.cookie || '';
+    const match = cookies.match(/auth_token=([^;]+)/);
+    if (match) token = match[1];
+  }
+
+  if (!token) return null;
+
   const payload = await verifyToken(token);
   return payload?.userId ?? null;
 }

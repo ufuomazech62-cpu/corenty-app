@@ -56,7 +56,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         body: JSON.stringify({
           email,
           amount: 650000, // ₦6,500 in kobo
-          callback_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?payment=success`,
+          callback_url: `${process.env.APP_URL}/?payment=success`,
           metadata: {
             user_id: userId,
             subscription_type: 'monthly'

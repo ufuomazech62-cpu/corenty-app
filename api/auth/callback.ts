@@ -21,7 +21,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         client_secret: process.env.GOOGLE_CLIENT_SECRET,
         code,
         grant_type: 'authorization_code',
-        redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`
+        redirect_uri: `${process.env.APP_URL}/api/auth/callback`
       })
     });
 
@@ -48,27 +48,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     `;
 
     let userId: number;
-    let onboardingComplete: boolean;
 
     if (existingUser.length === 0) {
       // Create new user
       const newUser = await sql`
-        INSERT INTO users (email, name, profile_photo)
-        VALUES (${googleUser.email}, ${googleUser.name}, ${googleUser.picture})
+        INSERT INTO users (google_id, email, name, profile_photo)
+        VALUES (${googleUser.id}, ${googleUser.email}, ${googleUser.name}, ${googleUser.picture})
         RETURNING id, onboarding_complete
       `;
       userId = newUser[0].id;
-      onboardingComplete = newUser[0].onboarding_complete;
     } else {
       // Update existing user
       const updatedUser = await sql`
-        UPDATE users 
-        SET name = ${googleUser.name}, profile_photo = ${googleUser.picture}, updated_at = NOW()
+        UPDATE users
+        SET google_id = ${googleUser.id}, name = ${googleUser.name}, profile_photo = ${googleUser.picture}, updated_at = NOW()
         WHERE email = ${googleUser.email}
         RETURNING id, onboarding_complete
       `;
       userId = updatedUser[0].id;
-      onboardingComplete = updatedUser[0].onboarding_complete;
     }
 
     // Create JWT token
@@ -77,14 +74,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Set cookie
     res.setHeader('Set-Cookie', `auth_token=${token}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${7 * 24 * 60 * 60}`);
 
-    // Redirect to appropriate page
-    if (onboardingComplete) {
-      res.redirect('/dashboard');
-    } else {
-      res.redirect('/onboarding');
-    }
+    // Redirect to SPA root — frontend router handles the rest
+    res.redirect('/');
   } catch (error) {
     console.error('OAuth callback error:', error);
-    res.redirect('/signin?error=oauth_failed');
+    res.redirect('/?error=oauth_failed');
   }
 }

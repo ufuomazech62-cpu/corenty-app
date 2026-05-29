@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const users = await sql`
       SELECT id, email, name, profile_photo, institution, matric_number, verified,
              mode, onboarding_complete, bio, socials, distance_to_campus, budget,
-             preferred_location, subscription_status, subscription_expires_at
+             preferred_area as preferred_location, subscription_status, subscription_expires_at
       FROM users
       WHERE id = ${userId}
     `;
