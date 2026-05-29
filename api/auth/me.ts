@@ -1,6 +1,33 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { neon } from '@neondatabase/serverless';
-import { getUserFromRequest } from './jwt';
+import crypto from 'crypto';
+
+const JWT_SECRET = process.env.JWT_SECRET || 'default-secret-change-in-production';
+
+async function getUserId(req: VercelRequest): Promise<number | null> {
+  let token: string | null = null;
+  const authHeader = req.headers.authorization;
+  if (authHeader?.startsWith('Bearer ')) {
+    token = authHeader.substring(7);
+  } else {
+    const cookies = req.headers.cookie || '';
+    const match = cookies.match(/auth_token=([^;]+)/);
+    if (match) token = match[1];
+  }
+  if (!token) return null;
+
+  try {
+    const [header, payload, signature] = token.split('.');
+    if (!header || !payload || !signature) return null;
+    const expected = crypto.createHmac('sha256', JWT_SECRET).update(`${header}.${payload}`).digest('base64url');
+    if (signature !== expected) return null;
+    const data = JSON.parse(Buffer.from(payload, 'base64url').toString());
+    if (data.exp && data.exp < Math.floor(Date.now() / 1000)) return null;
+    return data.userId;
+  } catch {
+    return null;
+  }
+}
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method !== 'GET') {
@@ -8,7 +35,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    const userId = await getUserFromRequest(req);
+    const userId = await getUserId(req);
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
