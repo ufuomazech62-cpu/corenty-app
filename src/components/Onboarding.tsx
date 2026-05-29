@@ -15,7 +15,6 @@ import {
   ChevronRight,
   AlertCircle,
   Camera,
-  Phone,
 } from 'lucide-react'
 import { TikTokIcon, InstagramIcon, FacebookIcon, XIcon, WhatsAppIcon } from './BrandIcons'
 import { api } from '../lib/api'
@@ -27,7 +26,6 @@ interface OnboardingProps {
 }
 
 type Mode = 'have' | 'need' | 'together'
-
 const TOTAL_STEPS = 6
 
 const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete }) => {
@@ -36,21 +34,20 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   const [error, setError] = useState('')
   const [direction, setDirection] = useState(1)
 
-  // Step 1
+  // Step 1 — basics
   const [name, setName] = useState(user?.name || '')
   const [institution, setInstitution] = useState('')
   const [matricNumber, setMatricNumber] = useState('')
-  const [whatsapp, setWhatsapp] = useState('')
 
-  // Step 2
+  // Step 2 — photos
   const [profilePhotos, setProfilePhotos] = useState<string[]>([])
   const [profilePhotoFiles, setProfilePhotoFiles] = useState<File[]>([])
   const profileInputRef = useRef<HTMLInputElement>(null)
 
-  // Step 3
+  // Step 3 — mode
   const [mode, setMode] = useState<Mode | null>(null)
 
-  // Step 4 — mode-specific
+  // Step 4 — mode-specific details
   const [apartmentTitle, setApartmentTitle] = useState('')
   const [apartmentPrice, setApartmentPrice] = useState('')
   const [apartmentLocation, setApartmentLocation] = useState('')
@@ -58,18 +55,19 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   const [apartmentPhotos, setApartmentPhotos] = useState<string[]>([])
   const [apartmentPhotoFiles, setApartmentPhotoFiles] = useState<File[]>([])
   const apartmentInputRef = useRef<HTMLInputElement>(null)
-  const [budget, setBudget] = useState('')
+
+  const [budgetMin, setBudgetMin] = useState('')
+  const [budgetMax, setBudgetMax] = useState('')
   const [preferredLocation, setPreferredLocation] = useState('')
   const [distanceToCampus, setDistanceToCampus] = useState(2)
   const [lookingFor, setLookingFor] = useState('')
-  const [budgetMin, setBudgetMin] = useState('')
-  const [budgetMax, setBudgetMax] = useState('')
   const [preferredAreas, setPreferredAreas] = useState('')
   const [bringToTable, setBringToTable] = useState('')
   const [bio, setBio] = useState('')
 
-  // Step 5 — socials (toggled)
-  const [email, setEmail] = useState(user?.email || '')
+  // Step 5 — contact & socials
+  const [email] = useState(user?.email || '')
+  const [phone, setPhone] = useState('')
   const [socialToggles, setSocialToggles] = useState({
     instagram: false,
     tiktok: false,
@@ -94,8 +92,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   const handleProfilePhotoAdd = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
-    const remaining = 5 - profilePhotos.length
-    Array.from(files).slice(0, remaining).forEach((file) => {
+    Array.from(files).slice(0, 5 - profilePhotos.length).forEach((file) => {
       setProfilePhotoFiles((prev) => [...prev, file])
       const reader = new FileReader()
       reader.onloadend = () => setProfilePhotos((prev) => prev.length >= 5 ? prev : [...prev, reader.result as string])
@@ -128,15 +125,15 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 
   const canProceed = (): boolean => {
     switch (step) {
-      case 1: return !!(name.trim() && institution.trim() && matricNumber.trim() && whatsapp.trim())
+      case 1: return !!(name.trim() && institution.trim() && matricNumber.trim())
       case 2: return profilePhotos.length >= 1
       case 3: return mode !== null
       case 4:
         if (mode === 'have') return !!(apartmentTitle.trim() && apartmentPrice.trim() && apartmentLocation.trim() && apartmentPhotos.length > 0 && bio.trim())
-        if (mode === 'need') return !!(budget.trim() && preferredLocation.trim() && bio.trim())
-        if (mode === 'together') return !!(budgetMin.trim() && preferredAreas.trim() && bio.trim())
+        if (mode === 'need') return !!(budgetMin.trim() && budgetMax.trim() && preferredLocation.trim() && bio.trim())
+        if (mode === 'together') return !!(budgetMin.trim() && budgetMax.trim() && preferredAreas.trim() && bio.trim())
         return false
-      case 5: return !!(email.trim())
+      case 5: return !!(phone.trim())
       case 6: return true
       default: return false
     }
@@ -160,7 +157,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         }
       }
 
-      const socials: Record<string, string> = { email: email.trim(), whatsapp: whatsapp.trim() }
+      const socials: Record<string, string> = { email: email.trim(), phone: phone.trim() }
       if (socialToggles.instagram && instagram.trim()) socials.instagram = instagram.trim()
       if (socialToggles.tiktok && tiktok.trim()) socials.tiktok = tiktok.trim()
       if (socialToggles.facebook && facebook.trim()) socials.facebook = facebook.trim()
@@ -178,8 +175,10 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
         socials,
       }
 
+      const budgetRange = `${budgetMin}-${budgetMax}`
+
       if (mode === 'need' || mode === 'together') {
-        profileData.budget = mode === 'need' ? budget : `${budgetMin}-${budgetMax}`
+        profileData.budget = budgetRange
         profileData.preferred_location = mode === 'need' ? preferredLocation : preferredAreas
         if (mode === 'need') profileData.distance_to_campus = distanceToCampus
       }
@@ -189,9 +188,9 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
       if (mode === 'have') {
         await api.createListing({ mode: 'have', title: apartmentTitle.trim(), price: apartmentPrice.trim(), location: apartmentLocation.trim(), description: apartmentDescription.trim(), photos: apartmentPhotoUrls, apartment_title: apartmentTitle.trim(), apartment_price: apartmentPrice.trim(), apartment_location: apartmentLocation.trim(), apartment_description: apartmentDescription.trim(), apartment_photos: apartmentPhotoUrls } as any)
       } else if (mode === 'need') {
-        await api.createListing({ mode: 'need', title: `${name.trim()} is looking for an apartment`, price: budget.trim(), location: preferredLocation.trim(), description: lookingFor.trim() || `Budget: ₦${budget}/yr, Preferred: ${preferredLocation}`, photos: profilePhotoUrls, distance_to_campus: distanceToCampus } as any)
+        await api.createListing({ mode: 'need', title: `${name.trim()} is looking for a roommate`, price: budgetRange, location: preferredLocation.trim(), description: lookingFor.trim() || bio.trim(), photos: profilePhotoUrls, distance_to_campus: distanceToCampus } as any)
       } else if (mode === 'together') {
-        await api.createListing({ mode: 'together' as any, title: `${name.trim()} is looking for a roommate`, price: `${budgetMin}-${budgetMax}`, location: preferredAreas.trim(), description: bringToTable.trim() || `Budget: ₦${budgetMin}-₦${budgetMax}, Areas: ${preferredAreas}`, photos: profilePhotoUrls } as any)
+        await api.createListing({ mode: 'together' as any, title: `${name.trim()} wants to find a place together`, price: budgetRange, location: preferredAreas.trim(), description: bringToTable.trim() || bio.trim(), photos: profilePhotoUrls } as any)
       }
 
       onComplete()
@@ -203,11 +202,11 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
   }
 
   const getPreviewPhotos = () => mode === 'have' ? apartmentPhotos : profilePhotos
-  const getPreviewTitle = () => mode === 'have' ? apartmentTitle || 'Apartment' : mode === 'need' ? `${name.trim()} wants an apartment` : `${name.trim()} wants a roommate`
-  const getPreviewPrice = () => mode === 'have' ? apartmentPrice : mode === 'need' ? budget : budgetMin && budgetMax ? `${budgetMin}–${budgetMax}` : budgetMin
+  const getPreviewTitle = () => mode === 'have' ? apartmentTitle || 'My apartment' : mode === 'need' ? `${name.trim()} is looking for a roommate` : `${name.trim()} wants to find a place together`
+  const getPreviewPrice = () => mode === 'have' ? apartmentPrice : budgetMin && budgetMax ? `${budgetMin}–${budgetMax}` : budgetMin
   const getPreviewLocation = () => mode === 'have' ? apartmentLocation : mode === 'need' ? preferredLocation : preferredAreas
   const getPreviewDescription = () => mode === 'have' ? apartmentDescription : mode === 'need' ? lookingFor || bio : bringToTable || bio
-  const getModeBadgeText = () => mode === 'have' ? 'Has Apartment' : mode === 'need' ? 'Needs Apartment' : 'Looking Together'
+  const getModeBadgeText = () => mode === 'have' ? 'Has a place' : mode === 'need' ? 'Needs a roommate' : 'Let\'s search together'
   const getModeBadgeClass = () => mode === 'have' ? 'bg-like text-white' : mode === 'need' ? 'bg-brand text-white' : 'bg-[#2563eb] text-white'
 
   const input = 'w-full px-4 py-3.5 bg-white border border-border rounded-2xl text-ink text-[15px] placeholder:text-ink-tertiary focus:outline-none focus:border-brand focus:ring-2 focus:ring-brand/10 transition-all'
@@ -249,8 +248,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {/* STEP 1: About You */}
             {step === 1 && (
               <motion.div key="s1" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">About you</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">The basics — we'll keep it quick</p>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">The basics</h1>
+                <p className="text-[14px] text-ink-tertiary mb-6">Just a few things to get started</p>
 
                 <div className="space-y-4">
                   <div>
@@ -264,15 +263,6 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                   <div>
                     <label className={label}>Matric number</label>
                     <input value={matricNumber} onChange={(e) => setMatricNumber(e.target.value)} placeholder="Your student ID" className={input} />
-                  </div>
-                  <div>
-                    <label className={label}>WhatsApp number <span className="text-brand">*</span></label>
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center flex-shrink-0">
-                        <WhatsAppIcon className="w-4 h-4" />
-                      </div>
-                      <input value={whatsapp} onChange={(e) => setWhatsapp(e.target.value)} placeholder="080..." className={`${input} flex-1`} />
-                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -308,14 +298,14 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {/* STEP 3: Mode */}
             {step === 3 && (
               <motion.div key="s3" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What are you here for?</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Pick one</p>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">How do you want to find a roommate?</h1>
+                <p className="text-[14px] text-ink-tertiary mb-6">Pick the option that fits your situation</p>
 
                 <div className="space-y-3">
                   {([
-                    { id: 'have' as Mode, icon: Home, title: 'I have a place', desc: 'List your apartment for roommates' },
-                    { id: 'need' as Mode, icon: Search, title: 'I need a place', desc: 'Browse apartments to move into' },
-                    { id: 'together' as Mode, icon: Users, title: 'Let\'s search together', desc: 'Find a roommate and apartment hunt' },
+                    { id: 'have' as Mode, icon: Home, title: 'I have a place', desc: 'You already have a room or apartment — find a compatible roommate to share it with' },
+                    { id: 'need' as Mode, icon: Search, title: 'I need a roommate', desc: 'You\'re looking for someone who has a place that you can move in with' },
+                    { id: 'together' as Mode, icon: Users, title: 'Let\'s find a place together', desc: 'Team up with someone and apartment-hunt as a pair' },
                   ]).map((opt) => (
                     <button
                       key={opt.id}
@@ -329,7 +319,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-[15px] font-semibold text-ink">{opt.title}</p>
-                        <p className="text-[13px] text-ink-tertiary">{opt.desc}</p>
+                        <p className="text-[13px] text-ink-tertiary leading-snug">{opt.desc}</p>
                       </div>
                     </button>
                   ))}
@@ -342,8 +332,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
               <motion.div key="s4" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
                 {mode === 'have' && (
                   <>
-                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Your apartment</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">Help others find your place</p>
+                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Tell people about your place</h1>
+                    <p className="text-[14px] text-ink-tertiary mb-6">So roommates know what to expect</p>
 
                     <div className="space-y-4">
                       <div>
@@ -379,7 +369,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                       </div>
                       <div>
                         <label className={label}>Description</label>
-                        <textarea value={apartmentDescription} onChange={(e) => setApartmentDescription(e.target.value)} placeholder="What's great about the place?" rows={2} className={`${input} resize-none`} />
+                        <textarea value={apartmentDescription} onChange={(e) => setApartmentDescription(e.target.value)} placeholder="What's the space like? Furnished? Shared amenities?" rows={2} className={`${input} resize-none`} />
                       </div>
                     </div>
                   </>
@@ -387,13 +377,17 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 
                 {mode === 'need' && (
                   <>
-                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What you're looking for</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">Your ideal apartment</p>
+                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What's your ideal situation?</h1>
+                    <p className="text-[14px] text-ink-tertiary mb-6">So people with places know what you're looking for</p>
 
                     <div className="space-y-4">
                       <div>
-                        <label className={label}>Budget (₦/year)</label>
-                        <input value={budget} onChange={(e) => setBudget(e.target.value)} placeholder="e.g. 300,000" className={input} />
+                        <label className={label}>Budget range (₦/year)</label>
+                        <div className="flex items-center gap-2">
+                          <input value={budgetMin} onChange={(e) => setBudgetMin(e.target.value)} placeholder="Min" className={`${input} flex-1`} />
+                          <span className="text-ink-tertiary">–</span>
+                          <input value={budgetMax} onChange={(e) => setBudgetMax(e.target.value)} placeholder="Max" className={`${input} flex-1`} />
+                        </div>
                       </div>
                       <div>
                         <label className={label}>Preferred area</label>
@@ -407,8 +401,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         </div>
                       </div>
                       <div>
-                        <label className={label}>Anything specific?</label>
-                        <textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="e.g. Shared room, quiet area" rows={2} className={`${input} resize-none`} />
+                        <label className={label}>What matters to you in a roommate?</label>
+                        <textarea value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="e.g. Quiet, clean, same gender" rows={2} className={`${input} resize-none`} />
                       </div>
                     </div>
                   </>
@@ -416,8 +410,8 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
 
                 {mode === 'together' && (
                   <>
-                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Search together</h1>
-                    <p className="text-[14px] text-ink-tertiary mb-6">What works for you</p>
+                    <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">What works for you?</h1>
+                    <p className="text-[14px] text-ink-tertiary mb-6">So potential roommates know if you're a good fit</p>
 
                     <div className="space-y-4">
                       <div>
@@ -433,36 +427,47 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
                         <input value={preferredAreas} onChange={(e) => setPreferredAreas(e.target.value)} placeholder="e.g. Yaba, Akoka" className={input} />
                       </div>
                       <div>
-                        <label className={label}>What you bring as a roommate</label>
+                        <label className={label}>What do you bring as a roommate?</label>
                         <textarea value={bringToTable} onChange={(e) => setBringToTable(e.target.value)} placeholder="e.g. Neat, pay on time, good cook" rows={2} className={`${input} resize-none`} />
                       </div>
                     </div>
                   </>
                 )}
 
-                {/* Bio */}
+                {/* Bio — required for all modes */}
                 <div className="mt-5 pt-5 border-t border-border">
-                  <label className={label}>About you</label>
-                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell roommates a bit about yourself" rows={2} className={`${input} resize-none`} />
+                  <label className={label}>About you <span className="text-brand">*</span></label>
+                  <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="A short intro — your hobbies, lifestyle, what makes you a great roommate" rows={3} className={`${input} resize-none`} />
                 </div>
               </motion.div>
             )}
 
-            {/* STEP 5: Socials (toggled) */}
+            {/* STEP 5: Contact & Socials */}
             {step === 5 && (
               <motion.div key="s5" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
-                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Stay connected</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Add the platforms you use</p>
+                <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">How roommates can reach you</h1>
+                <p className="text-[14px] text-ink-tertiary mb-6">These will show on your profile so people can connect with you</p>
 
                 <div className="space-y-3">
-                  {/* Email — always shown */}
+                  {/* Phone — required, main input */}
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-brand/10 flex items-center justify-center flex-shrink-0">
+                      <WhatsAppIcon className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-[11px] font-semibold text-ink-tertiary mb-0.5 block">Phone / WhatsApp <span className="text-brand">*</span></label>
+                      <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="080..." className={`${input} !py-2.5`} />
+                    </div>
+                  </div>
+
+                  {/* Email — auto from Google, read-only */}
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-cream flex items-center justify-center flex-shrink-0">
                       <span className="text-[12px] font-bold text-ink-tertiary">@</span>
                     </div>
                     <div className="flex-1">
-                      <label className="text-[11px] font-semibold text-ink-tertiary mb-0.5 block">Email <span className="text-brand">*</span></label>
-                      <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@email.com" className={`${input} !py-2.5`} />
+                      <label className="text-[11px] font-semibold text-ink-tertiary mb-0.5 block">Email</label>
+                      <input value={email} readOnly className={`${input} !py-2.5 bg-cream text-ink-secondary cursor-default`} />
                     </div>
                   </div>
 
@@ -513,7 +518,7 @@ const Onboarding: React.FC<OnboardingProps> = ({ user, onNavigate, onComplete })
             {step === 6 && (
               <motion.div key="s6" custom={direction} variants={slide} initial="enter" animate="center" exit="exit" transition={{ duration: 0.25, ease: 'easeOut' }}>
                 <h1 className="text-[22px] font-display font-bold text-ink tracking-[-0.04em] mb-1">Looks good?</h1>
-                <p className="text-[14px] text-ink-tertiary mb-6">Here's how your listing will appear</p>
+                <p className="text-[14px] text-ink-tertiary mb-6">Here's how your profile will appear to other students</p>
 
                 <div className="bg-white rounded-3xl shadow-lg overflow-hidden">
                   <div className="relative aspect-[4/3] bg-border">
